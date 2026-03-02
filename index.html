@@ -14,7 +14,6 @@
   <div class="wrap">
     
     <div class="card">
-      <p class="title">車両情報</p>
       <div class="veh-info">
         <div class="info-item"><span class="label">ST:</span> <span id="disp_station">--</span></div>
         <div class="info-item"><span class="label">車種:</span> <span id="disp_model">--</span></div>
@@ -41,6 +40,14 @@
       <div class="check-row">
         <div class="check-label">ジュニアシート</div>
         <div class="toggle-group" id="tg_junior">
+          <button type="button" class="toggle-btn active" data-val="無">無</button>
+          <button type="button" class="toggle-btn" data-val="有">有</button>
+        </div>
+      </div>
+
+      <div class="check-row">
+        <div class="check-label">ジャッキ</div>
+        <div class="toggle-group" id="tg_jack">
           <button type="button" class="toggle-btn active" data-val="無">無</button>
           <button type="button" class="toggle-btn" data-val="有">有</button>
         </div>
