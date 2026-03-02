@@ -1,0 +1,55 @@
+:root{ --bg:#111; --fg:#eee; --muted:#9aa; --card:#1a1a1a; --brand:#ff8c00; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; }
+.wrap{ padding:16px; max-width:740px; margin:0 auto; padding-bottom: 40px; }
+header{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+h1{ font-size:18px; margin:0; }
+.ver-badge{ position:fixed; right:10px; top:10px; background:#222; color:#fff; padding:6px 10px; border-radius:10px; font-weight:700; font-size:12px; border:1px solid #333; z-index:100; }
+.card{ background:var(--card); border-radius:12px; padding:16px; }
+.title{ margin:0 0 12px; font-weight:700; color:#fff; font-size:15px; border-bottom:1px solid #333; padding-bottom:6px; }
+
+/* 車両情報 */
+.veh-info { display:flex; flex-direction:column; gap:6px; margin-bottom: 16px; background: #141414; padding: 10px; border-radius: 8px; border: 1px solid #2a2a2a; }
+.info-item { font-size: 15px; font-weight: bold; }
+.info-item .label { color: var(--muted); font-weight: normal; font-size: 13px; display: inline-block; width: 40px; }
+
+/* ストップウォッチ */
+.stopwatch-container { text-align: center; margin: 20px 0; }
+#stopwatch { font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 2px; color: #fff; line-height: 1; text-shadow: 0 0 10px rgba(255,140,0,0.3); }
+
+/* 時刻表示 (旧アプリから復刻・調整) */
+.time-stamp{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; }
+.stamp-card{ background:#141414; border:1px solid #2a2a2a; border-radius:10px; padding:12px; text-align: center; }
+.stamp-head{ display:flex; justify-content:center; align-items:center; margin-bottom:8px; }
+.stamp-title{ font-weight:700; color: var(--muted); font-size: 14px; }
+.stamp-time{ font-size:26px; font-weight:bold; letter-spacing:1px; color: #fff; }
+
+/* 備忘録チェック項目 */
+.check-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #333; }
+.check-row:last-child { border-bottom: none; padding-bottom: 0; }
+.check-label { font-size: 15px; font-weight: bold; }
+
+/* トグルボタン */
+.toggle-group { display: flex; background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #333; }
+.toggle-btn { flex: 1; padding: 8px 16px; background: transparent; border: none; color: #aaa; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.toggle-btn.active { background: var(--brand); color: #000; }
+
+/* プルダウン */
+.select-group { display: flex; align-items: center; gap: 8px; }
+.select-group select { background: #222; color: #fff; border: 1px solid #444; padding: 8px 12px; border-radius: 8px; font-size: 16px; outline: none; appearance: none; text-align: center; min-width: 60px; }
+.select-group .slash { color: #666; font-size: 18px; }
+
+/* ボタン類 */
+.btn{ appearance:none; border:1px solid #333; background:#222; color:#fff; padding:9px 12px; border-radius:12px; font-size:16px; text-align:center; cursor: pointer; }
+.btn.primary{ background:var(--brand); color:#000; border-color:var(--brand); }
+.toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:20px; background:#222; border:1px solid #333; color:#fff; padding:12px 20px; border-radius:10px; z-index:999; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+
+@media (max-width: 480px) {
+  .wrap { padding: 10px; }
+  .card { padding: 12px; }
+  #stopwatch { font-size: 48px; }
+  .stamp-time { font-size: 22px; }
+  .check-label { font-size: 14px; }
+  .select-group select { padding: 6px 10px; font-size: 15px; min-width: 50px; }
+  .toggle-btn { padding: 6px 12px; font-size: 14px; }
+}
