@@ -2,7 +2,7 @@
   // ===== 設定 =====
   const SHEETS_URL = window.SHEETS_URL || '';
   const SHEETS_KEY = window.SHEETS_KEY || '';
-  const APP_VERSION = 'v1b';
+  const APP_VERSION = 'v1c';
 
   // ===== 要素取得 =====
   const dispStation = document.getElementById('disp_station');
@@ -44,26 +44,19 @@
 
   // ===== 初期化処理 =====
   function init() {
-    // 1. URLパラメータの取得・表示
     const p = new URLSearchParams(location.search);
     currentVehicle.station = p.get('station') || '';
     currentVehicle.model = p.get('model') || '';
-    currentVehicle.plate_full = p.get('plate_full') || p.get('plate') || ''; // 念のため両方対応
+    currentVehicle.plate_full = p.get('plate_full') || p.get('plate') || ''; 
 
     dispStation.textContent = currentVehicle.station || '未指定';
     dispModel.textContent = currentVehicle.model || '未指定';
     dispPlate.textContent = currentVehicle.plate_full || '未指定';
 
-    // 2. プルダウンの生成 (月:01~12, 年:今年~+10年)
     generateSelectOptions();
-
-    // 3. トグルボタンのイベント設定
     setupToggleButtons();
-
-    // 4. 時刻とストップウォッチの初期化
     initTimesAndTimer();
 
-    // 5. 作業完了ボタンのイベント設定
     completeBtn.addEventListener('click', handleWorkComplete);
   }
 
@@ -109,16 +102,13 @@
     const nowMs = Date.now();
 
     if (savedData && savedData.startTimeMs && savedData.unlockTime) {
-      // 既存のセッションを復元（誤ってリロードした場合など）
       startTimeMs = savedData.startTimeMs;
       unlockTimeEl.textContent = savedData.unlockTime;
     } else {
-      // 新規セッション開始
       startTimeMs = nowMs;
       const unlockTime = getNowHHMM();
       unlockTimeEl.textContent = unlockTime;
       
-      // ローカルに保存
       try {
         localStorage.setItem(vKey, JSON.stringify({
           startTimeMs: startTimeMs,
@@ -127,7 +117,6 @@
       } catch(e) {}
     }
 
-    // ストップウォッチ開始
     updateStopwatch();
     timerInterval = setInterval(updateStopwatch, 1000);
   }
@@ -149,12 +138,12 @@
     // 1. タイマー停止＆施錠時刻記録
     clearInterval(timerInterval);
     completeBtn.disabled = true;
-    completeBtn.textContent = "送信中...";
+    completeBtn.textContent = "戻ります...";
     
     const lockTime = getNowHHMM();
     lockTimeEl.textContent = lockTime;
 
-    // 2. GASへ送信 (旧アプリの postLockTimeOnly と完全互換)
+    // 2. GASへ送信 (非同期・裏側)
     const payload = {
       mode: 'lock_only',
       station: currentVehicle.station,
@@ -164,40 +153,28 @@
       lock: lockTime
     };
 
-    try {
-      const body = new URLSearchParams();
-      body.set('key', SHEETS_KEY);
-      body.set('json', JSON.stringify(payload));
+    const body = new URLSearchParams();
+    body.set('key', SHEETS_KEY);
+    body.set('json', JSON.stringify(payload));
 
-      const res = await fetch(SHEETS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body
-      });
+    // keepaliveを付けて、画面遷移してもブラウザが裏で送信を続けてくれるようにする
+    fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+      keepalive: true
+    }).catch(e => console.error(e));
 
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      
-      const j = await res.json().catch(() => ({ok: true}));
-      if (j && j.ok) {
-        showToast('施錠時刻を記録しました');
-        
-        // ローカルストレージの該当車両データをクリア
-        try { localStorage.removeItem(getVehicleKey()); } catch(e){}
+    // ローカルストレージの該当車両データをクリア
+    try { localStorage.removeItem(getVehicleKey()); } catch(e){}
 
-        // 3. 巡回アプリへ戻る
-        setTimeout(() => {
-          history.back();
-        }, 1500);
+    // ▼▼▼ 巡回アプリへの帰還サイン（自動チェック用）を残す ▼▼▼
+    try { localStorage.setItem("junkai:completed_plate", currentVehicle.plate_full); } catch(e){}
 
-      } else {
-        throw new Error('GAS Response Error');
-      }
-    } catch(err) {
-      console.error(err);
-      showToast('送信に失敗しました');
-      completeBtn.disabled = false;
-      completeBtn.textContent = "作業完了 (再試行)";
-    }
+    // 3. 待たずに即時戻る (サクサク感重視)
+    setTimeout(() => {
+      history.back();
+    }, 50); 
   }
 
   // ===== 起動処理 =====
