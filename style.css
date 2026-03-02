@@ -1,73 +1,87 @@
-:root{ --bg:#111; --fg:#eee; --muted:#9aa; --card:#1a1a1a; --brand:#ff8c00; }
-*{ box-sizing:border-box; }
-body{ margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; }
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>作業管理アプリ V1B</title>
+  <link rel="stylesheet" href="style.css?v=V1B"/>
+</head>
+<body>
+  <div class="ver-badge">V1B</div>
+  <header>
+    <h1>作業管理</h1>
+  </header>
+  <div class="wrap">
+    
+    <div class="card">
+      <p class="title">車両情報</p>
+      <div class="veh-info">
+        <div class="info-item"><span class="label">ST:</span> <span id="disp_station">--</span></div>
+        <div class="info-item"><span class="label">車種:</span> <span id="disp_model">--</span></div>
+        <div class="info-item"><span class="label">車番:</span> <span id="disp_plate">--</span></div>
+      </div>
+      
+      <div class="stopwatch-container">
+        <div id="stopwatch">00:00</div>
+      </div>
 
-/* 全体のパディングを圧縮 (16px -> 8px) */
-.wrap{ padding: 8px; max-width:740px; margin:0 auto; padding-bottom: 20px; }
+      <div class="time-stamp">
+        <div class="stamp-card">
+          <div class="stamp-head"><div class="stamp-title">解錠</div></div>
+          <div id="unlockTime" class="stamp-time">--:--</div>
+        </div>
+        <div class="stamp-card">
+          <div class="stamp-head"><div class="stamp-title">施錠</div></div>
+          <div id="lockTime" class="stamp-time">--:--</div>
+        </div>
+      </div>
+    </div>
 
-/* ヘッダーの余白調整 */
-header{ display:flex; align-items:center; justify-content:space-between; padding: 8px 16px; }
-h1{ font-size: 17px; margin:0; }
+    <div class="card" style="margin-top:12px;">
+      <div class="check-row">
+        <div class="check-label">ジュニアシート</div>
+        <div class="toggle-group" id="tg_junior">
+          <button type="button" class="toggle-btn active" data-val="無">無</button>
+          <button type="button" class="toggle-btn" data-val="有">有</button>
+        </div>
+      </div>
 
-.ver-badge{ position:fixed; right:10px; top:10px; background:#222; color:#fff; padding:6px 10px; border-radius:10px; font-weight:700; font-size:12px; border:1px solid #333; z-index:100; }
+      <div class="check-row">
+        <div class="check-label">パンク修理剤 期限</div>
+        <div class="select-group">
+          <select id="sel_punk_mm"><option value="">月</option></select> <span class="slash">/</span>
+          <select id="sel_punk_yy"><option value="">年</option></select>
+        </div>
+      </div>
 
-/* カードのパディング圧縮 (16px -> 10px) */
-.card{ background:var(--card); border-radius:12px; padding: 10px; }
+      <div class="check-row">
+        <div class="check-label">発煙筒 期限</div>
+        <div class="select-group">
+          <select id="sel_flare_mm"><option value="">月</option></select> <span class="slash">/</span>
+          <select id="sel_flare_yy"><option value="">年</option></select>
+        </div>
+      </div>
 
-/* タイトルの余白・サイズ調整 */
-.title{ margin: 0 0 8px; font-weight:700; color:#fff; font-size: 14px; border-bottom:1px solid #333; padding-bottom: 4px; }
+      <div class="check-row">
+        <div class="check-label">忘れ物</div>
+        <div class="toggle-group" id="tg_lost">
+          <button type="button" class="toggle-btn active" data-val="無">無</button>
+          <button type="button" class="toggle-btn" data-val="有">有</button>
+        </div>
+      </div>
+    </div>
 
-/* 車両情報の圧縮 */
-.veh-info { display:flex; flex-direction:column; gap: 2px; margin-bottom: 8px; background: #141414; padding: 8px; border-radius: 8px; border: 1px solid #2a2a2a; }
-.info-item { font-size: 14px; font-weight: bold; }
-.info-item .label { color: var(--muted); font-weight: normal; font-size: 12px; display: inline-block; width: 35px; }
+    <div class="foot section" style="margin-top:16px;">
+      <button id="completeBtn" class="btn primary" type="button" style="width:100%; font-size:18px; padding:14px; font-weight:bold;">作業完了</button>
+    </div>
 
-/* ストップウォッチの圧縮 (margin 20px -> 8px, font 56px -> 42px) */
-.stopwatch-container { text-align: center; margin: 8px 0; }
-#stopwatch { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 1px; color: #fff; line-height: 1; text-shadow: 0 0 8px rgba(255,140,0,0.3); }
-
-/* 解錠・施錠エリアの大幅圧縮 (Main Target) */
-.time-stamp{ display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin-top: 6px; }
-.stamp-card{ background:#141414; border:1px solid #2a2a2a; border-radius:8px; padding: 6px; text-align: center; }
-.stamp-head{ display:flex; justify-content:center; align-items:center; margin-bottom: 2px; }
-.stamp-title{ font-weight:700; color: var(--muted); font-size: 12px; }
-/* 時刻の文字サイズ縮小 (26px -> 20px) */
-.stamp-time{ font-size: 20px; font-weight:bold; letter-spacing:0px; color: #fff; line-height: 1.2; }
-
-/* 備忘録チェック項目の行間圧縮 */
-.check-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #333; }
-.check-row:last-child { border-bottom: none; padding-bottom: 0; }
-.check-label { font-size: 14px; font-weight: bold; }
-
-/* トグルボタン、プルダウンのスリム化 */
-.toggle-group { display: flex; background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #333; }
-.toggle-btn { flex: 1; padding: 6px 12px; background: transparent; border: none; color: #aaa; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-.toggle-btn.active { background: var(--brand); color: #000; }
-
-.select-group { display: flex; align-items: center; gap: 6px; }
-.select-group select { background: #222; color: #fff; border: 1px solid #444; padding: 6px 10px; border-radius: 8px; font-size: 15px; outline: none; appearance: none; text-align: center; min-width: 50px; }
-.select-group .slash { color: #666; font-size: 16px; }
-
-/* ボタンと下部余白の調整 */
-.btn{ appearance:none; border:1px solid #333; background:#222; color:#fff; padding:9px 12px; border-radius:12px; font-size:16px; text-align:center; cursor: pointer; }
-.btn.primary{ background:var(--brand); color:#000; border-color:var(--brand); }
-
-.toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:16px; background:#222; border:1px solid #333; color:#fff; padding:10px 18px; border-radius:10px; z-index:999; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-
-/* フッターセクションの余白詰める */
-.foot.section{ margin-top: 10px; padding-top: 8px; border-top:1px dashed #333; }
-
-/* スマホ用調整もさらにコンパクトに */
-@media (max-width: 480px) {
-  .wrap { padding: 6px; }
-  .card { padding: 8px; }
-  header { padding: 6px 10px; }
-  h1 { font-size: 16px; }
-  #stopwatch { font-size: 36px; }
-  .time-stamp { gap: 6px; margin-top: 4px; }
-  .stamp-card { padding: 4px; }
-  .stamp-time { font-size: 18px; }
-  .check-label { font-size: 13px; }
-  .select-group select { padding: 4px 8px; font-size: 14px; min-width: 45px; }
-  .toggle-btn { padding: 4px 10px; font-size: 13px; }
-}
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  
+  <script>
+    window.SHEETS_URL = "https://script.google.com/macros/s/AKfycbyo2U1_TBxvzhJL50GHY8S0NeT1k0kueWb4tI1q2Oaw87NuGXqwjO7PWyCDdqFNZTdz/exec";
+    window.SHEETS_KEY = "tl1";
+  </script>
+  <script src="app.js?v=V1B" defer></script>
+</body>
+</html>
