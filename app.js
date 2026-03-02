@@ -2,7 +2,7 @@
   // ===== 設定 =====
   const SHEETS_URL = window.SHEETS_URL || '';
   const SHEETS_KEY = window.SHEETS_KEY || '';
-  const APP_VERSION = 'v1a';
+  const APP_VERSION = 'v1b';
 
   // ===== 要素取得 =====
   const dispStation = document.getElementById('disp_station');
@@ -160,6 +160,7 @@
       station: currentVehicle.station,
       plate_full: currentVehicle.plate_full,
       model: currentVehicle.model,
+      unlock: unlockTimeEl.textContent || '',
       lock: lockTime
     };
 
