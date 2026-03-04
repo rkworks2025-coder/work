@@ -20,6 +20,7 @@
         <div class="info-item"><span class="label">車番:</span> <span id="disp_plate">--</span></div>
       </div>
       
+      
       <div class="stopwatch-container">
         <div id="stopwatch">00:00</div>
       </div>
@@ -32,6 +33,7 @@
         <div class="stamp-card">
           <div class="stamp-head"><div class="stamp-title">施錠</div></div>
           <div id="lockTime" class="stamp-time">--:--</div>
+   
         </div>
       </div>
     </div>
@@ -46,6 +48,7 @@
       </div>
 
       <div class="check-row">
+     
         <div class="check-label">ジャッキ</div>
         <div class="toggle-group" id="tg_jack">
           <button type="button" class="toggle-btn active" data-val="無">無</button>
@@ -56,20 +59,22 @@
       <div class="check-row">
         <div class="check-label">パンク修理剤 期限</div>
         <div class="select-group">
-          <select id="sel_punk_mm"><option value="">月</option></select> <span class="slash">/</span>
-          <select id="sel_punk_yy"><option value="">年</option></select>
+          <select id="sel_punk_yy"><option value="">年</option></select> <span class="slash">/</span>
+     
+          <select id="sel_punk_mm"><option value="">月</option></select>
         </div>
       </div>
 
       <div class="check-row">
         <div class="check-label">発煙筒 期限</div>
         <div class="select-group">
-          <select id="sel_flare_mm"><option value="">月</option></select> <span class="slash">/</span>
-          <select id="sel_flare_yy"><option value="">年</option></select>
+          <select id="sel_flare_yy"><option value="">年</option></select> <span class="slash">/</span>
+          <select id="sel_flare_mm"><option value="">月</option></select>
         </div>
       </div>
 
       <div class="check-row">
+      
         <div class="check-label">忘れ物</div>
         <div class="toggle-group" id="tg_lost">
           <button type="button" class="toggle-btn active" data-val="無">無</button>
@@ -79,7 +84,8 @@
     </div>
 
     <div class="foot section" style="margin-top:16px;">
-      <button id="completeBtn" class="btn primary" type="button" style="width:100%; font-size:18px; padding:14px; font-weight:bold;">作業完了</button>
+      <button id="completeBtn" class="btn primary" type="button" style="width:100%;
+font-size:18px; padding:14px; font-weight:bold;">作業完了</button>
     </div>
 
   </div>
