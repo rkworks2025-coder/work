@@ -6,28 +6,20 @@
   <title>作業管理 V1C</title>
   <link rel="stylesheet" href="style.css?v=V1C"/>
   <style>
-    /* スプラッシュ画面のスタイル */
-    #splash {
-      position: fixed; inset: 0; z-index: 9999;
-      background: #000; display: flex; align-items: center; justify-content: center;
-      cursor: pointer; overflow: hidden;
-    }
+    #splash { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     #splash img { width: 100%; height: 100%; object-fit: cover; }
-    #splash .msg {
-      position: absolute; bottom: 10%; width: 100%; text-align: center;
-      color: white; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    }
-    .toast.error { background: #ef4444; color: white; border: 2px solid #fff; }
+    #splash .msg { position: absolute; bottom: 15%; width: 100%; text-align: center; color: white; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; }
+    .toast.error { background: #ef4444; color: white; border: 2px solid #fff; font-weight: bold; }
   </style>
 </head>
 <body>
   <div id="splash">
-    <img id="splashImg" src="" alt="Splash">
-    <div class="msg">お疲れ様！<br>タップして作業開始 ♥</div>
+    <img id="splashImg" src="" alt="Loading...">
+    <div class="msg">作業スタート！頑張って！♥</div>
   </div>
 
-  <div class="ver-badge">V1C</div>
-  <header><h1>作業管理</h1></header>
+  <div class="ver-badge">V1C</div> <header><h1>作業管理</h1></header>
+  
   <div class="wrap">
     <div class="card">
       <div class="veh-info">
@@ -35,18 +27,13 @@
         <div class="info-item"><span class="label">車種:</span> <span id="disp_model">--</span></div>
         <div class="info-item"><span class="label">車番:</span> <span id="disp_plate">--</span></div>
       </div>
-      <div class="stopwatch-container"><div id="stopwatch">00:00</div></div>
-      <div class="time-stamp">
-        <div class="stamp-card"><div class="stamp-head">解錠</div><div id="unlockTime" class="stamp-time">--:--</div></div>
-        <div class="stamp-card"><div class="stamp-head">施錠</div><div id="lockTime" class="stamp-time">--:--</div></div>
-      </div>
+      <div class="stopwatch-container"><div id="stopwatch">00:00</div></div> </div>
     </div>
-    </div>
-  <div id="toast" class="toast" hidden></div>
-  <script>
-    window.SHEETS_URL = "https://script.google.com/macros/s/AKfycbyo2U1_TBxvzhJL50GHY8S0NeT1k0kueWb4tI1q2Oaw87NuGXqwjO7PWyCDdqFNZTdz/exec";
+
+  <div id="toast" class="toast" hidden></div> <script>
     window.TMA_GAS_URL = "https://script.google.com/macros/s/AKfycbyXbPaarnD7mQa_rqm6mk-Os3XBH6C731aGxk7ecJC5U3XjtwfMkeF429rezkAo79jN/exec";
-    window.SHEETS_KEY = "tl1";
+    window.SHEETS_URL = "https://script.google.com/macros/s/AKfycbyo2U1_TBxvzhJL50GHY8S0NeT1k0kueWb4tI1q2Oaw87NuGXqwjO7PWyCDdqFNZTdz/exec"; [cite_start]// [cite: 195]
+    window.SHEETS_KEY = "tl1"; [cite_start]// [cite: 195]
   </script>
   <script src="app.js?v=V1C" defer></script>
 </body>
