@@ -1,139 +1,186 @@
-// 作業管理アプリ app.js Version: V1D (UI復元・ロジック維持版)
 (() => {
-  const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
-  const splash = document.getElementById('splash');
-  const splashImg = document.getElementById('splashImg');
-  const toast = document.getElementById('toast');
+  // ===== 設定 =====
+  const SHEETS_URL = window.SHEETS_URL || '';
+  const SHEETS_KEY = window.SHEETS_KEY || '';
+  const APP_VERSION = 'v1c';
+
+  // ===== 要素取得 =====
+  const dispStation = document.getElementById('disp_station');
+  const dispModel   = document.getElementById('disp_model');
+  const dispPlate   = document.getElementById('disp_plate');
+  const stopwatchEl = document.getElementById('stopwatch');
+  const unlockTimeEl= document.getElementById('unlockTime');
+  const lockTimeEl  = document.getElementById('lockTime');
+  const completeBtn = document.getElementById('completeBtn');
+  const toast       = document.getElementById('toast');
+
+  // 車両データ保持用
+  let currentVehicle = { station: '', model: '', plate_full: '' };
   
-  let startTime = null;
-  let timerId = null;
+  // タイマー用変数
+  let timerInterval = null;
+  let startTimeMs = 0;
 
-  // 電子音生成 
-  function playBeep(type = 'success') {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    if (type === 'success') {
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      osc.start(); osc.stop(ctx.currentTime + 0.2);
-    } else {
-      [0, 0.3, 0.6].forEach(t => {
-        osc.frequency.setValueAtTime(440, ctx.currentTime + t);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime + t);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + t + 0.2);
-      });
-      osc.start(); osc.stop(ctx.currentTime + 0.8);
-    }
-  }
+  // ===== ユーティリティ =====
+  const showToast = (msg) => { 
+    toast.textContent = msg; 
+    toast.hidden = false; 
+    setTimeout(() => toast.hidden = true, 3000); 
+  };
 
-  function showToast(msg, isError = false) {
-    toast.textContent = msg;
-    toast.hidden = false;
-    toast.className = isError ? 'toast error' : 'toast';
-    if (!isError) setTimeout(() => toast.hidden = true, 3000);
-  }
+  // 1桁数字を0埋め
+  const pad = (n) => String(n).padStart(2, '0');
 
-  // TMAリトライ送信 
-  async function triggerTmaWithRetry(plate, requestId) {
-    const intervals = [0, 3000, 5000];
-    for (let i = 0; i < 3; i++) {
-      try {
-        await new Promise(r => setTimeout(r, intervals[i]));
-        const res = await fetch(`${window.TMA_GAS_URL}?action=triggerTMA`, {
-          method: "POST",
-          body: JSON.stringify({ plate, requestId }),
-          keepalive: true
-        });
-        const json = await res.json();
-        if (json.ok) {
-          showToast("✅ TMA自動入力スタート");
-          return;
-        }
-      } catch (e) { console.warn(`TMA Retry ${i+1} failed`); }
-    }
-    showToast("❌ TMA送信失敗 (電波エラー)", true);
-    playBeep('error');
-  }
-
-  // ストップウォッチ開始
-  function startStopwatch() {
-    startTime = Date.now();
-    timerId = setInterval(() => {
-      const diff = Math.floor((Date.now() - startTime) / 1000);
-      const mm = String(Math.floor(diff / 60)).padStart(2, '0');
-      const ss = String(diff % 60).padStart(2, '0');
-      document.getElementById('stopwatch').textContent = `${mm}:${ss}`;
-    }, 1000);
-    
-    // 解錠時刻の記録
+  // 現在時刻を HH:MM で取得
+  function getNowHHMM() {
     const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('unlockTime').textContent = `${hh}:${min}`;
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   }
 
-  // 入力項目の初期化 (UI復元対応)
-  function initUI() {
-    // トグルボタンの切り替え (.tg-btn に変更)
-    document.querySelectorAll('.tg-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const group = btn.closest('.tg-group');
-        group.querySelectorAll('.tg-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      });
-    });
-
-    // 年月のプルダウン生成
-    const mmSelects = document.querySelectorAll('select[id$=\"_mm\"]');
-    const yySelects = document.querySelectorAll('select[id$=\"_yy\"]');
-    for(let i=1; i<=12; i++) {
-      const opt = `<option value=\"${i}\">${i}月</option>`;
-      mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
-    }
-    const curYear = new Date().getFullYear();
-    for(let i=0; i<10; i++) {
-      const y = curYear + i;
-      const opt = `<option value=\"${y}\">${y}年</option>`;
-      yySelects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
-    }
+  // 車両固有キー (localStorage保存用)
+  function getVehicleKey() {
+    return `workapp:${APP_VERSION}:${currentVehicle.station}|${currentVehicle.plate_full}`;
   }
 
+  // ===== 初期化処理 =====
   function init() {
     const p = new URLSearchParams(location.search);
-    initUI();
+    currentVehicle.station = p.get('station') || '';
+    currentVehicle.model = p.get('model') || '';
+    currentVehicle.plate_full = p.get('plate_full') || p.get('plate') || ''; 
 
-    splash.addEventListener('click', () => {
-      splash.style.display = 'none';
-      playBeep('success');
-      
-      const tmaPlate = p.get('tma_plate');
-      const tmaReqId = p.get('tma_req_id');
-      if (tmaPlate && tmaReqId) {
-        triggerTmaWithRetry(tmaPlate, tmaReqId);
-      }
+    dispStation.textContent = currentVehicle.station || '未指定';
+    dispModel.textContent = currentVehicle.model || '未指定';
+    dispPlate.textContent = currentVehicle.plate_full || '未指定';
 
-      document.getElementById('disp_station').textContent = p.get('station') || '--';
-      document.getElementById('disp_model').textContent = p.get('model') || '--';
-      document.getElementById('disp_plate').textContent = p.get('plate_full') || '--';
-      
-      startStopwatch();
-    }, { once: true });
+    generateSelectOptions();
+    setupToggleButtons();
+    initTimesAndTimer();
 
-    fetch(GITHUB_IMG_API)
-      .then(res => res.json())
-      .then(files => {
-        const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i));
-        if (images.length > 0) {
-          splashImg.src = images[Math.floor(Math.random() * images.length)].download_url;
-        }
-      })
-      .catch(e => {
-        console.warn("Image load failed");
-        splashImg.style.display = 'none';
-      });
+    completeBtn.addEventListener('click', handleWorkComplete);
   }
 
-  init();
+  // ===== UI生成・設定 =====
+  function generateSelectOptions() {
+    const mmOptions = '<option value="">月</option>' + 
+      Array.from({length: 12}, (_, i) => `<option value="${pad(i+1)}">${pad(i+1)}</option>`).join('');
+    
+    const currentYear = Number(String(new Date().getFullYear()).slice(-2));
+    const yyOptions = '<option value="">年</option>' + 
+      Array.from({length: 11}, (_, i) => `<option value="${currentYear + i}">${currentYear + i}</option>`).join('');
+
+    document.getElementById('sel_punk_mm').innerHTML = mmOptions;
+    document.getElementById('sel_flare_mm').innerHTML = mmOptions;
+    document.getElementById('sel_punk_yy').innerHTML = yyOptions;
+    document.getElementById('sel_flare_yy').innerHTML = yyOptions;
+  }
+
+  function setupToggleButtons() {
+    document.querySelectorAll('.toggle-group').forEach(group => {
+      const btns = group.querySelectorAll('.toggle-btn');
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+    });
+  }
+
+  // ===== 時間管理ロジック =====
+  function initTimesAndTimer() {
+    if (!currentVehicle.plate_full) return;
+
+    const vKey = getVehicleKey();
+    let savedData = null;
+
+    try {
+      const raw = localStorage.getItem(vKey);
+      if (raw) savedData = JSON.parse(raw);
+    } catch(e) {}
+
+    const nowMs = Date.now();
+
+    if (savedData && savedData.startTimeMs && savedData.unlockTime) {
+      startTimeMs = savedData.startTimeMs;
+      unlockTimeEl.textContent = savedData.unlockTime;
+    } else {
+      startTimeMs = nowMs;
+      const unlockTime = getNowHHMM();
+      unlockTimeEl.textContent = unlockTime;
+      
+      try {
+        localStorage.setItem(vKey, JSON.stringify({
+          startTimeMs: startTimeMs,
+          unlockTime: unlockTime
+        }));
+      } catch(e) {}
+    }
+
+    updateStopwatch();
+    timerInterval = setInterval(updateStopwatch, 1000);
+  }
+
+  function updateStopwatch() {
+    if (startTimeMs === 0) return;
+    const diffSec = Math.floor((Date.now() - startTimeMs) / 1000);
+    const m = Math.floor(diffSec / 60);
+    const s = diffSec % 60;
+    stopwatchEl.textContent = `${pad(m)}:${pad(s)}`;
+  }
+
+  // ===== 送信・完了ロジック =====
+  async function handleWorkComplete() {
+    if (!window.confirm("作業を完了し、施錠時刻を記録して戻りますか？")) {
+      return;
+    }
+
+    // 1. タイマー停止＆施錠時刻記録
+    clearInterval(timerInterval);
+    completeBtn.disabled = true;
+    completeBtn.textContent = "戻ります...";
+    
+    const lockTime = getNowHHMM();
+    lockTimeEl.textContent = lockTime;
+
+    // 2. GASへ送信 (非同期・裏側)
+    const payload = {
+      mode: 'lock_only',
+      station: currentVehicle.station,
+      plate_full: currentVehicle.plate_full,
+      model: currentVehicle.model,
+      unlock: unlockTimeEl.textContent || '',
+      lock: lockTime
+    };
+
+    const body = new URLSearchParams();
+    body.set('key', SHEETS_KEY);
+    body.set('json', JSON.stringify(payload));
+
+    // keepaliveを付けて、画面遷移してもブラウザが裏で送信を続けてくれるようにする
+    fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+      keepalive: true
+    }).catch(e => console.error(e));
+
+    // ローカルストレージの該当車両データをクリア
+    try { localStorage.removeItem(getVehicleKey()); } catch(e){}
+
+    // ▼▼▼ 巡回アプリへの帰還サイン（自動チェック用）を残す ▼▼▼
+    try { localStorage.setItem("junkai:completed_plate", currentVehicle.plate_full); } catch(e){}
+
+    // 3. 待たずに即時戻る (サクサク感重視)
+    setTimeout(() => {
+      history.back();
+    }, 50); 
+  }
+
+  // ===== 起動処理 =====
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, {once: true});
+  } else {
+    init();
+  }
 })();
