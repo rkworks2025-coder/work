@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1D (ロジック完全復旧版)
+// 作業管理アプリ app.js Version: V1D (UI復元・ロジック維持版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -74,41 +74,39 @@
     document.getElementById('unlockTime').textContent = `${hh}:${min}`;
   }
 
-  // 入力項目の初期化 (V1Bの挙動)
+  // 入力項目の初期化 (UI復元対応)
   function initUI() {
-    // トグルボタンの切り替え
-    document.querySelectorAll('.toggle-btn').forEach(btn => {
+    // トグルボタンの切り替え (.tg-btn に変更)
+    document.querySelectorAll('.tg-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const group = btn.parentElement;
-        group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        const group = btn.closest('.tg-group');
+        group.querySelectorAll('.tg-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       });
     });
 
     // 年月のプルダウン生成
-    const mmSelects = document.querySelectorAll('select[id$="_mm"]');
-    const yySelects = document.querySelectorAll('select[id$="_yy"]');
+    const mmSelects = document.querySelectorAll('select[id$=\"_mm\"]');
+    const yySelects = document.querySelectorAll('select[id$=\"_yy\"]');
     for(let i=1; i<=12; i++) {
-      const opt = `<option value="${i}">${i}月</option>`;
+      const opt = `<option value=\"${i}\">${i}月</option>`;
       mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
     }
     const curYear = new Date().getFullYear();
     for(let i=0; i<10; i++) {
       const y = curYear + i;
-      const opt = `<option value="${y}">${y}年</option>`;
+      const opt = `<option value=\"${y}\">${y}年</option>`;
       yySelects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
     }
   }
 
-  // 初期化：通信より先にリスナー登録を行う
   function init() {
     const p = new URLSearchParams(location.search);
-    initUI(); // ボタン等を反応可能にする
+    initUI();
 
-    // ★フリーズ対策：真っ先にクリックを待ち受ける
     splash.addEventListener('click', () => {
       splash.style.display = 'none';
-      playBeep('success'); // 音出し制限解除 [cite: 31]
+      playBeep('success');
       
       const tmaPlate = p.get('tma_plate');
       const tmaReqId = p.get('tma_req_id');
@@ -116,15 +114,13 @@
         triggerTmaWithRetry(tmaPlate, tmaReqId);
       }
 
-      // 車両情報表示
       document.getElementById('disp_station').textContent = p.get('station') || '--';
       document.getElementById('disp_model').textContent = p.get('model') || '--';
       document.getElementById('disp_plate').textContent = p.get('plate_full') || '--';
       
-      startStopwatch(); // [cite: 31]
+      startStopwatch();
     }, { once: true });
 
-    // 画像取得はバックグラウンドで（awaitせずに飛ばす）[cite: 27, 28, 29]
     fetch(GITHUB_IMG_API)
       .then(res => res.json())
       .then(files => {
@@ -135,7 +131,7 @@
       })
       .catch(e => {
         console.warn("Image load failed");
-        splashImg.style.display = 'none'; // [cite: 30]
+        splashImg.style.display = 'none';
       });
   }
 
