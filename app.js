@@ -1,11 +1,11 @@
-[cite_start]// 作業管理アプリ app.js Version: V1C [cite: 195]
+// 作業管理アプリ app.js Version: V1D
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
   const splashImg = document.getElementById('splashImg');
   const toast = document.getElementById('toast');
 
-  // 電子音の生成
+  // 電子音の生成 [cite: 125-127]
   function playBeep(type = 'success') {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -30,18 +30,19 @@
     toast.textContent = msg;
     toast.hidden = false;
     toast.className = isError ? 'toast error' : 'toast';
-    if (!isError) setTimeout(() => toast.hidden = true, 3000); [cite_start]// [cite: 195]
+    if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // ★最大3回のリトライ通信
+  // ★TMA送信：バックグラウンドでリトライ実行 [cite: 130-135]
   async function triggerTmaWithRetry(plate, requestId) {
-    const intervals = [0, 3000, 5000]; // 即時, 3秒後, 5秒後
+    const intervals = [0, 3000, 5000];
     for (let i = 0; i < 3; i++) {
       try {
         await new Promise(r => setTimeout(r, intervals[i]));
         const res = await fetch(`${window.TMA_GAS_URL}?action=triggerTMA`, {
           method: "POST",
-          body: JSON.stringify({ plate, requestId })
+          body: JSON.stringify({ plate, requestId }),
+          keepalive: true // 画面が閉じても送信を継続
         });
         const json = await res.json();
         if (json.ok) {
@@ -50,35 +51,55 @@
         }
       } catch (e) { console.warn(`TMA Retry ${i+1} failed`); }
     }
-    showToast("❌ TMA送信失敗 (電波エラー)", true); // 消えないトースト
-    playBeep('error'); // 警告音
+    showToast("❌ TMA送信失敗 (電波エラー)", true);
+    playBeep('error');
   }
 
-  // ★画像リストの自動取得 ＆ 初期化
-  async function init() {
-    const p = new URLSearchParams(location.search);
-    
+  // ★非同期で画像リストを取得（UIをブロックしない）
+  async function fetchRandomImage() {
     try {
-      // GitHub APIからimgフォルダの中身を取得
-      const res = await fetch(GITHUB_IMG_API);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒でタイムアウト
+
+      const res = await fetch(GITHUB_IMG_API, { signal: controller.signal });
       const files = await res.json();
       const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i));
+      
       if (images.length > 0) {
-        splashImg.src = images[Math.floor(Math.random() * images.length)].download_url;
+        const selected = images[Math.floor(Math.random() * images.length)];
+        splashImg.src = selected.download_url;
       }
-    } catch (e) { splashImg.style.display = 'none'; }
+    } catch (e) {
+      console.warn("Image fetch failed or timeout", e);
+      // 失敗してもスプラッシュは表示し続ける（真っ黒な画面をタップさせる）
+    }
+  }
 
+  // ★初期化：リスナー登録を最優先 [cite: 136-141]
+  function init() {
+    const p = new URLSearchParams(location.search);
+    
+    // 1. まずクリックを受け付ける準備をする
     splash.addEventListener('click', () => {
       splash.style.display = 'none';
-      playBeep('success'); // 音出し制限の解除
+      playBeep('success');
       
       const tmaPlate = p.get('tma_plate');
       const tmaReqId = p.get('tma_req_id');
       if (tmaPlate && tmaReqId) {
         triggerTmaWithRetry(tmaPlate, tmaReqId);
       }
-      [cite_start]// (ストップウォッチ開始等の既存処理をここに記述 [cite: 190])
+      
+      // 車両情報の表示
+      document.getElementById('disp_station').textContent = p.get('station') || '--';
+      document.getElementById('disp_model').textContent = p.get('model') || '--';
+      document.getElementById('disp_plate').textContent = p.get('plate_full') || '--';
+      
+      // (ストップウォッチ開始等の既存処理)
     }, { once: true });
+
+    // 2. 裏側で画像を読み込みに行く（awaitしない！）
+    fetchRandomImage();
   }
 
   init();
