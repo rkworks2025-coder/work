@@ -6,10 +6,12 @@
   <title>作業管理 V1D</title>
   <link rel="stylesheet" href="style.css?v=V1D"/>
   <style>
+    /* スプラッシュ画面の設定 [cite: 9, 10, 11, 12] */
     #splash { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     #splash img { width: 100%; height: 100%; object-fit: cover; }
     #splash .msg { position: absolute; bottom: 15%; width: 100%; text-align: center; color: white; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px #000; }
-    .toast.error { background: #ef4444; color: white; border: 2px solid #fff; font-weight: bold; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 99px; z-index: 10000; }
+    .toast.error { background: #ef4444; color: white; border: 2px solid #fff; font-weight: bold; } /* [cite: 12, 13] */
   </style>
 </head>
 <body>
@@ -28,8 +30,11 @@
         <div class="info-item"><span class="label">車種:</span> <span id="disp_model">--</span></div>
         <div class="info-item"><span class="label">車番:</span> <span id="disp_plate">--</span></div>
       </div>
-      <div class="stopwatch-container"><div id="stopwatch">00:00</div></div>
       
+      <div class="stopwatch-container">
+        <div id="stopwatch">00:00</div>
+      </div>
+
       <div class="time-stamp">
         <div class="stamp-card">
           <div class="stamp-head"><div class="stamp-title">解錠</div></div>
@@ -50,6 +55,7 @@
           <button type="button" class="toggle-btn" data-val="有">有</button>
         </div>
       </div>
+
       <div class="check-row">
         <div class="check-label">ジャッキ</div>
         <div class="toggle-group" id="tg_jack">
@@ -57,6 +63,7 @@
           <button type="button" class="toggle-btn" data-val="有">有</button>
         </div>
       </div>
+
       <div class="check-row">
         <div class="check-label">パンク修理剤 期限</div>
         <div class="select-group">
@@ -64,6 +71,7 @@
           <select id="sel_punk_yy"><option value="">年</option></select>
         </div>
       </div>
+
       <div class="check-row">
         <div class="check-label">発煙筒 期限</div>
         <div class="select-group">
@@ -71,6 +79,7 @@
           <select id="sel_flare_yy"><option value="">年</option></select>
         </div>
       </div>
+
       <div class="check-row">
         <div class="check-label">忘れ物</div>
         <div class="toggle-group" id="tg_lost">
