@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1D (UI構造完全維持・最新ロジック統合版)
+// 作業管理アプリ app.js Version: V1D (ストップウォッチ即時開始版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -37,7 +37,7 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // TMAリトライ送信
+  // TMAリトライ送信 (最新ロジック)
   async function triggerTmaWithRetry(plate, requestId) {
     const intervals = [0, 3000, 5000];
     for (let i = 0; i < 3; i++) {
@@ -59,6 +59,7 @@
     playBeep('error');
   }
 
+  // ストップウォッチ開始 (呼出時から計測)
   function startStopwatch() {
     startTime = Date.now();
     timerId = setInterval(() => {
@@ -68,11 +69,12 @@
       document.getElementById('stopwatch').textContent = `${mm}:${ss}`;
     }, 1000);
     
+    // 解錠時刻（計測開始時刻）を記録
     const now = new Date();
     document.getElementById('unlockTime').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
 
-  // 作業完了処理
+  // 作業完了処理 (最新版維持)
   async function handleWorkComplete() {
     if (!window.confirm("作業を完了し、施錠時刻を記録して戻りますか？")) return;
 
@@ -110,7 +112,7 @@
   }
 
   function initUI() {
-    // トグルボタン (.toggle-btn クラスを維持)
+    // トグルボタン切り替えロジック
     document.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const group = btn.parentElement;
@@ -140,6 +142,9 @@
     initUI();
     completeBtn.addEventListener('click', handleWorkComplete);
 
+    // ★ストップウォッチを即座に開始 (スプラッシュ表示中もカウント)
+    startStopwatch();
+
     splash.addEventListener('click', () => {
       splash.style.display = 'none';
       playBeep('success');
@@ -148,13 +153,13 @@
       const tmaReqId = p.get('tma_req_id');
       if (tmaPlate && tmaReqId) triggerTmaWithRetry(tmaPlate, tmaReqId);
 
+      // 車両情報表示
       document.getElementById('disp_station').textContent = currentVehicle.station || '--';
       document.getElementById('disp_model').textContent = currentVehicle.model || '--';
       document.getElementById('disp_plate').textContent = currentVehicle.plate_full || '--';
-      
-      startStopwatch();
     }, { once: true });
 
+    // スプラッシュ画像取得
     fetch(GITHUB_IMG_API)
       .then(res => res.json())
       .then(files => {
