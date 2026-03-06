@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1D (UI完全復元・ロジック維持版)
+// 作業管理アプリ app.js Version: V1D (UI復元・最新ロジック統合版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -8,7 +8,7 @@
   let startTime = null;
   let timerId = null;
 
-  // 電子音生成 (スプラッシュクリック時に解放)
+  // 電子音生成
   function playBeep(type = 'success') {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -35,7 +35,7 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // TMAリトライ送信ロジック (最新版維持)
+  // TMAリトライ送信 (最新ロジック)
   async function triggerTmaWithRetry(plate, requestId) {
     const intervals = [0, 3000, 5000];
     for (let i = 0; i < 3; i++) {
@@ -57,7 +57,6 @@
     playBeep('error');
   }
 
-  // ストップウォッチ開始
   function startStopwatch() {
     startTime = Date.now();
     timerId = setInterval(() => {
@@ -67,16 +66,12 @@
       document.getElementById('stopwatch').textContent = `${mm}:${ss}`;
     }, 1000);
     
-    // 解錠時刻の記録
     const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('unlockTime').textContent = `${hh}:${min}`;
+    document.getElementById('unlockTime').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
 
-  // UI初期化：トグルボタンとプルダウン (最小差分修正)
   function initUI() {
-    // トグルボタン切り替えロジック
+    // トグルボタン (.tg-btn に統一)
     document.querySelectorAll('.tg-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const group = btn.closest('.tg-group');
@@ -85,18 +80,15 @@
       });
     });
 
-    // 年月のプルダウン生成
+    // 年月プルダウン生成
     const mmSelects = document.querySelectorAll('select[id$="_mm"]');
     const yySelects = document.querySelectorAll('select[id$="_yy"]');
     for(let i=1; i<=12; i++) {
-      const opt = `<option value="${i}">${i}月</option>`;
-      mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
+      mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value="${i}">${i}月</option>`));
     }
     const curYear = new Date().getFullYear();
     for(let i=0; i<10; i++) {
-      const y = curYear + i;
-      const opt = `<option value="${y}">${y}年</option>`;
-      yySelects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
+      yySelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value="${curYear+i}">${curYear+i}年</option>`));
     }
   }
 
@@ -104,18 +96,14 @@
     const p = new URLSearchParams(location.search);
     initUI();
 
-    // スプラッシュ解除で全機能スタート
     splash.addEventListener('click', () => {
       splash.style.display = 'none';
       playBeep('success');
       
       const tmaPlate = p.get('tma_plate');
       const tmaReqId = p.get('tma_req_id');
-      if (tmaPlate && tmaReqId) {
-        triggerTmaWithRetry(tmaPlate, tmaReqId);
-      }
+      if (tmaPlate && tmaReqId) triggerTmaWithRetry(tmaPlate, tmaReqId);
 
-      // 車両情報表示
       document.getElementById('disp_station').textContent = p.get('station') || '--';
       document.getElementById('disp_model').textContent = p.get('model') || '--';
       document.getElementById('disp_plate').textContent = p.get('plate_full') || '--';
@@ -123,19 +111,13 @@
       startStopwatch();
     }, { once: true });
 
-    // ランダム画像取得
     fetch(GITHUB_IMG_API)
       .then(res => res.json())
       .then(files => {
         const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i));
-        if (images.length > 0) {
-          splashImg.src = images[Math.floor(Math.random() * images.length)].download_url;
-        }
+        if (images.length > 0) splashImg.src = images[Math.floor(Math.random() * images.length)].download_url;
       })
-      .catch(e => {
-        console.warn("Image load failed");
-        splashImg.style.display = 'none';
-      });
+      .catch(() => { splashImg.style.display = 'none'; });
   }
 
   init();
