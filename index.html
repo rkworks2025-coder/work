@@ -3,16 +3,19 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>作業管理アプリ V1B</title>
-  <link rel="stylesheet" href="style.css?v=V1B"/>
+  <title>作業管理 V1D</title>
+  <link rel="stylesheet" href="style.css?v=V1D"/>
 </head>
 <body>
-  <div class="ver-badge">V1B</div>
-  <header>
-    <h1>作業管理</h1>
-  </header>
+  <div id="splash">
+    <img id="splashImg" src="" alt="Loading...">
+    <div class="msg">作業スタート！頑張って！♥</div>
+  </div>
+
+  <div class="ver-badge">V1D</div>
+  <header><h1>作業管理</h1></header>
+  
   <div class="wrap">
-    
     <div class="card">
       <div class="veh-info">
         <div class="info-item"><span class="label">ST:</span> <span id="disp_station">--</span></div>
@@ -81,14 +84,15 @@
     <div class="foot section" style="margin-top:16px;">
       <button id="completeBtn" class="btn primary" type="button" style="width:100%; font-size:18px; padding:14px; font-weight:bold;">作業完了</button>
     </div>
-
   </div>
-  <div id="toast" class="toast" hidden></div>
-  
+
+  <div id="toast" class="toast" hidden></div> 
   <script>
+    // 連携用URL設定
+    window.TMA_GAS_URL = "https://script.google.com/macros/s/AKfycbyXbPaarnD7mQa_rqm6mk-Os3XBH6C731aGxk7ecJC5U3XjtwfMkeF429rezkAo79jN/exec";
     window.SHEETS_URL = "https://script.google.com/macros/s/AKfycbyo2U1_TBxvzhJL50GHY8S0NeT1k0kueWb4tI1q2Oaw87NuGXqwjO7PWyCDdqFNZTdz/exec";
     window.SHEETS_KEY = "tl1";
   </script>
-  <script src="app.js?v=V1B" defer></script>
+  <script src="app.js?v=V1D" defer></script>
 </body>
 </html>
