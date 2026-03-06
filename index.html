@@ -3,93 +3,92 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>作業管理 V1D</title>
-  <link rel="stylesheet" href="style.css?v=V1D"/>
+  <title>作業管理アプリ V1B</title>
+  <link rel="stylesheet" href="style.css?v=V1B"/>
 </head>
 <body>
-  <div id="splash">
-    <img id="splashImg" src="" alt="Loading...">
-    <div class="msg">作業スタート！頑張って！♥</div>
-  </div>
-
-  <div class="ver-badge">V1D</div>
-  <header><h1>作業管理</h1></header>
-  
+  <div class="ver-badge">V1B</div>
+  <header>
+    <h1>作業管理</h1>
+  </header>
   <div class="wrap">
+    
     <div class="card">
-      <div class="veh-row"><span class="label">ST:</span><span id="disp_station" class="val">--</span></div>
-      <div class="veh-row"><span class="label">車種:</span><span id="disp_model" class="val">--</span></div>
-      <div class="veh-row"><span class="label">車番:</span><span id="disp_plate" class="val">--</span></div>
+      <div class="veh-info">
+        <div class="info-item"><span class="label">ST:</span> <span id="disp_station">--</span></div>
+        <div class="info-item"><span class="label">車種:</span> <span id="disp_model">--</span></div>
+        <div class="info-item"><span class="label">車番:</span> <span id="disp_plate">--</span></div>
+      </div>
       
-      <div class="sw-wrap">
+      <div class="stopwatch-container">
         <div id="stopwatch">00:00</div>
       </div>
 
-      <div class="time-row">
-        <div class="time-box">
-          <span class="lbl">解錠</span>
-          <div id="unlockTime" class="val">--:--</div>
+      <div class="time-stamp">
+        <div class="stamp-card">
+          <div class="stamp-head"><div class="stamp-title">解錠</div></div>
+          <div id="unlockTime" class="stamp-time">--:--</div>
         </div>
-        <div class="time-box">
-          <span class="lbl">施錠</span>
-          <div id="lockTime" class="val">--:--</div>
+        <div class="stamp-card">
+          <div class="stamp-head"><div class="stamp-title">施錠</div></div>
+          <div id="lockTime" class="stamp-time">--:--</div>
         </div>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" style="margin-top:12px;">
       <div class="check-row">
-        <div class="tg-group" id="tg_junior">
-          <button type="button" class="tg-btn active" data-val="無">無</button>
-          <button type="button" class="tg-btn" data-val="有">有</button>
-        </div>
         <div class="check-label">ジュニアシート</div>
-      </div>
-
-      <div class="check-row">
-        <div class="tg-group" id="tg_jack">
-          <button type="button" class="tg-btn active" data-val="無">無</button>
-          <button type="button" class="tg-btn" data-val="有">有</button>
+        <div class="toggle-group" id="tg_junior">
+          <button type="button" class="toggle-btn active" data-val="無">無</button>
+          <button type="button" class="toggle-btn" data-val="有">有</button>
         </div>
-        <div class="check-label">ジャッキ</div>
       </div>
 
       <div class="check-row">
+        <div class="check-label">ジャッキ</div>
+        <div class="toggle-group" id="tg_jack">
+          <button type="button" class="toggle-btn active" data-val="無">無</button>
+          <button type="button" class="toggle-btn" data-val="有">有</button>
+        </div>
+      </div>
+
+      <div class="check-row">
+        <div class="check-label">パンク修理剤 期限</div>
         <div class="select-group">
           <select id="sel_punk_mm"><option value="">月</option></select> <span class="slash">/</span>
           <select id="sel_punk_yy"><option value="">年</option></select>
         </div>
-        <div class="check-label">パンク修理剤 期限</div>
       </div>
 
       <div class="check-row">
+        <div class="check-label">発煙筒 期限</div>
         <div class="select-group">
           <select id="sel_flare_mm"><option value="">月</option></select> <span class="slash">/</span>
           <select id="sel_flare_yy"><option value="">年</option></select>
         </div>
-        <div class="check-label">発煙筒 期限</div>
       </div>
 
       <div class="check-row">
-        <div class="tg-group" id="tg_lost">
-          <button type="button" class="tg-btn active" data-val="無">無</button>
-          <button type="button" class="tg-btn" data-val="有">有</button>
-        </div>
         <div class="check-label">忘れ物</div>
+        <div class="toggle-group" id="tg_lost">
+          <button type="button" class="toggle-btn active" data-val="無">無</button>
+          <button type="button" class="toggle-btn" data-val="有">有</button>
+        </div>
       </div>
     </div>
 
     <div class="foot section" style="margin-top:16px;">
       <button id="completeBtn" class="btn primary" type="button" style="width:100%; font-size:18px; padding:14px; font-weight:bold;">作業完了</button>
     </div>
-  </div>
 
-  <div id="toast" class="toast" hidden></div> 
+  </div>
+  <div id="toast" class="toast" hidden></div>
+  
   <script>
-    window.TMA_GAS_URL = "https://script.google.com/macros/s/AKfycbyXbPaarnD7mQa_rqm6mk-Os3XBH6C731aGxk7ecJC5U3XjtwfMkeF429rezkAo79jN/exec";
     window.SHEETS_URL = "https://script.google.com/macros/s/AKfycbyo2U1_TBxvzhJL50GHY8S0NeT1k0kueWb4tI1q2Oaw87NuGXqwjO7PWyCDdqFNZTdz/exec";
     window.SHEETS_KEY = "tl1";
   </script>
-  <script src="app.js?v=V1D" defer></script>
+  <script src="app.js?v=V1B" defer></script>
 </body>
 </html>
