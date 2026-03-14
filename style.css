@@ -57,13 +57,40 @@ h1{ font-size: 17px; margin:0; }
 /* フッターセクションの余白詰める */
 .foot.section{ margin-top: 10px; padding-top: 8px; border-top:1px dashed #333; }
 
-/* スプラッシュ画面の設定 (メッセージ装飾変更) */
+/* スプラッシュ画面の設定 (JSロジック用に追加) */
 #splash { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 #splash img { width: 100%; height: 100%; object-fit: cover; }
-#splash .msg { position: absolute; bottom: 15%; width: 100%; display: flex; flex-direction: column; align-items: center; }
-#splash .msg-line1, #splash .msg-line2 { font-family: 'Yomogi', sans-serif; color: #fff; font-size: 28px; font-weight: bold; text-shadow: 2px 2px 4px #000; padding: 0 8px; line-height: 1.2; }
-#splash .msg-line1 { transform: rotate(-6deg); background: linear-gradient(transparent 60%, var(--brand) 60%); margin-right: 30px; }
-#splash .msg-line2 { transform: rotate(4deg); background: linear-gradient(transparent 60%, #ff4081 60%); margin-top: -10px; margin-left: 50px; }
+
+/* メッセージブロック全体を斜めにして配置 */
+#splash .msg { 
+  position: absolute; 
+  bottom: 20%; 
+  width: 100%; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  transform: rotate(-10deg); 
+}
+#splash .msg-line1, #splash .msg-line2 { 
+  font-family: 'Yomogi', sans-serif; 
+  color: #fff; 
+  font-size: 32px; 
+  font-weight: bold; 
+  text-shadow: 2px 2px 4px #000; 
+  padding: 0 8px; 
+  line-height: 1.2; 
+}
+#splash .msg-line1 { 
+  background: linear-gradient(transparent 60%, var(--brand) 60%); 
+  margin-right: 60px; /* 左上にズラす */
+  z-index: 2; 
+}
+#splash .msg-line2 { 
+  background: linear-gradient(transparent 60%, #ff4081 60%); 
+  margin-top: -5px; /* 上下で少し重ねる */
+  margin-left: 60px; /* 右下にズラす */
+  z-index: 1; 
+}
 
 /* スマホ用調整もさらにコンパクトに */
 @media (max-width: 480px) {
@@ -78,4 +105,5 @@ h1{ font-size: 17px; margin:0; }
   .check-label { font-size: 13px; }
   .select-group select { padding: 4px 8px; font-size: 14px; min-width: 45px; }
   .toggle-btn { padding: 4px 10px; font-size: 13px; }
+  #splash .msg-line1, #splash .msg-line2 { font-size: 28px; }
 }
