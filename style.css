@@ -70,6 +70,7 @@ h1{ font-size: 17px; margin:0; }
   flex-direction: column; 
   align-items: center; 
   transform: rotate(-8deg); /* 全体を右上がりに傾ける */
+  line-height: 1.5; /* 行間を十分に空ける */
 }
 /* フォントサイズを大幅にアップ */
 #splash .msg-line1, #splash .msg-line2 { 
@@ -79,7 +80,6 @@ h1{ font-size: 17px; margin:0; }
   font-weight: bold; 
   text-shadow: 2px 2px 6px #000; 
   padding: 0 10px; 
-  line-height: 1.1; 
 }
 #splash .msg-line1 { 
   background: linear-gradient(transparent 55%, rgba(255, 140, 0, 0.8) 55%); 
@@ -88,7 +88,6 @@ h1{ font-size: 17px; margin:0; }
 }
 #splash .msg-line2 { 
   background: linear-gradient(transparent 55%, rgba(255, 64, 129, 0.8) 55%); 
-  margin-top: -15px; /* 上の行に少し被せる */
   margin-left: 80px; /* 右側にズラす */
   z-index: 1; 
 }
@@ -107,8 +106,9 @@ h1{ font-size: 17px; margin:0; }
   .select-group select { padding: 4px 8px; font-size: 14px; min-width: 45px; }
   .toggle-btn { padding: 4px 10px; font-size: 13px; }
   
-  /* スマホ版のメッセージサイズ調整 */
+  /* スマホ版のメッセージサイズと行間調整 */
+  #splash .msg { line-height: 1.6; }
   #splash .msg-line1, #splash .msg-line2 { font-size: 38px; }
   #splash .msg-line1 { margin-right: 40px; }
-  #splash .msg-line2 { margin-left: 40px; margin-top: -10px; }
+  #splash .msg-line2 { margin-left: 40px; }
 }
