@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1D (ストップウォッチ即時開始版)
+// 作業管理アプリ app.js Version: V1E (ストップウォッチ即時開始版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
