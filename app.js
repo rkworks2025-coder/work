@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1F (ストップウォッチ即時開始・ヘッダー修正版)
+// 作業管理アプリ app.js Version: V1G (ストップウォッチ即時開始・GASキー名修正版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -91,8 +91,8 @@
       station: currentVehicle.station,
       plate_full: currentVehicle.plate_full,
       model: currentVehicle.model,
-      unlock_time: document.getElementById('unlockTime').textContent,
-      lock_time: lockTime
+      unlock: document.getElementById('unlockTime').textContent,
+      lock: lockTime
     };
 
     const body = new URLSearchParams();
