@@ -116,35 +116,34 @@ background: #000; display: flex; align-items: center; justify-content: center; c
   z-index: 1; 
 }
 
-/* オリジナルモーダル関連 (巡回アプリベース) */
+/* オリジナルモーダル設定 (junkai_style.cssを忠実に反映) */
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, .75);
+  background: rgba(0,0,0,.65);
   display: none;
-  align-items: flex-end;
+  align-items: flex-end; /* 指定通り */
   justify-content: center;
-  padding-bottom: 25vh; /* 真ん中と一番下の間 */
+  padding-bottom: 15vh; /* 指定通り */
   z-index: 10000;
 }
 .modal.show { display: flex; }
 
 .dialog {
-  width: min(340px, 85vw);
+  width: min(480px, 90vw);
   background: #020617; /* 巡回アプリのベースカラー */
   color: #fff;
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 24px;
-  border: 1px solid #1f2937;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+  border: 1px solid #111827;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
 
 .modal-msg {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: bold;
   text-align: center;
   margin-bottom: 24px;
-  color: #f3f4f6;
 }
 
 .modal-actions {
@@ -154,23 +153,9 @@ background: #000; display: flex; align-items: center; justify-content: center; c
 
 .modal-actions .btn {
   flex: 1;
-  padding: 14px 0;
+  padding: 12px 0;
   font-size: 16px;
-  border-radius: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  border: 1px solid #1f2937;
-  background: #0f172a;
-  color: #9ca3af;
-  transition: opacity 0.1s;
-}
-
-.modal-actions .btn:active { opacity: 0.7; }
-
-.modal-actions .btn.primary {
-  background: #0f172a;
-  border-color: #1d4ed8;
-  color: #bfdbfe;
+  font-weight: bold;
 }
 
 /* スマホ用調整 */
