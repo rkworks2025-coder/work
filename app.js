@@ -37,6 +37,27 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
+  // 確認モーダル表示プロミス
+  function showConfirmModal() {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('confirmModal');
+      const okBtn = document.getElementById('modalOkBtn');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+
+      modal.classList.add('show');
+
+      const handleResponse = (res) => {
+        modal.classList.remove('show');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(res);
+      };
+
+      okBtn.onclick = () => handleResponse(true);
+      cancelBtn.onclick = () => handleResponse(false);
+    });
+  }
+
   // TMAリトライ送信 (最新ロジック)
   async function triggerTmaWithRetry(plate, requestId) {
     const intervals = [0, 3000, 5000];
@@ -74,9 +95,10 @@
     document.getElementById('unlockTime').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
 
-  // 作業完了処理 (最新版維持)
+  // 作業完了処理 (自作モーダル版)
   async function handleWorkComplete() {
-    if (!window.confirm("作業を完了し、施錠時刻を記録して戻りますか？")) return;
+    const ok = await showConfirmModal();
+    if (!ok) return;
 
     clearInterval(timerId);
     completeBtn.disabled = true;
