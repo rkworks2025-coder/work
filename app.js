@@ -181,44 +181,44 @@
       document.getElementById('disp_plate').textContent = currentVehicle.plate_full || '--';
     }, { once: true });
 
-    // スプラッシュ画像取得 (賢いキャッシュ方式)
-    const cacheKey = "junkai:splash_images";
-    let cachedImages = [];
-    try {
-      // 1. まずローカルストレージから画像のリストを探す
-      const stored = localStorage.getItem(cacheKey);
-      if (stored) {
-        cachedImages = JSON.parse(stored);
-        if (cachedImages.length > 0) {
-          // キャッシュがあれば、APIを待たずに一瞬で表示する
-          splashImg.src = cachedImages[Math.floor(Math.random() * cachedImages.length)];
-        }
-      }
-    } catch(e) {}
-
-    // 2. 裏側でAPIと通信して、最新の画像リストを取得する
-    fetch(GITHUB_IMG_API)
-      .then(res => res.json())
-      .then(files => {
-        const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
-        if (images.length > 0) {
-          try {
-            // 最新のリストをローカルストレージに上書きメモしておく
-            localStorage.setItem(cacheKey, JSON.stringify(images));
-          } catch(e) {}
-          
-          // もしキャッシュが空っぽ（初回起動やキャッシュクリア直後）だった場合のみ、取得した画像を表示する
-          if (cachedImages.length === 0) {
-            splashImg.src = images[Math.floor(Math.random() * images.length)];
+    // ★画像表示ロジック：パラメータ引き継ぎを最優先する
+    const splashImgParam = p.get('splash_img');
+    if (splashImgParam) {
+      // タイヤ点検アプリでプリロード済みのURLをセット。即座に表示される。
+      splashImg.src = splashImgParam;
+    } else {
+      const cacheKey = "junkai:splash_images";
+      let cachedImages = [];
+      try {
+        const stored = localStorage.getItem(cacheKey);
+        if (stored) {
+          cachedImages = JSON.parse(stored);
+          if (cachedImages.length > 0) {
+            splashImg.src = cachedImages[Math.floor(Math.random() * cachedImages.length)];
           }
         }
-      })
-      .catch(() => {
-        // API通信がエラーになり、かつキャッシュも無い場合のみ非表示にする
-        if (cachedImages.length === 0) {
-          splashImg.style.display = 'none';
-        }
-      });
+      } catch(e) {}
+
+      fetch(GITHUB_IMG_API)
+        .then(res => res.json())
+        .then(files => {
+          const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
+          if (images.length > 0) {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(images));
+            } catch(e) {}
+            
+            if (cachedImages.length === 0 && !splashImgParam) {
+              splashImg.src = images[Math.floor(Math.random() * images.length)];
+            }
+          }
+        })
+        .catch(() => {
+          if (cachedImages.length === 0 && !splashImgParam) {
+            splashImg.style.display = 'none';
+          }
+        });
+    }
   }
 
   init();
