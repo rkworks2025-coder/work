@@ -144,14 +144,14 @@
     });
 
     // 年月プルダウン生成
-    const mmSelects = document.querySelectorAll('select[id$=\"_mm\"]');
-    const yySelects = document.querySelectorAll('select[id$=\"_yy\"]');
+    const mmSelects = document.querySelectorAll('select[id$="_mm"]');
+    const yySelects = document.querySelectorAll('select[id$="_yy"]');
     for(let i=1; i<=12; i++) {
-      mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value=\"${String(i).padStart(2, '0')}\">${String(i).padStart(2, '0')}</option>`));
+      mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`));
     }
     const curYear = new Date().getFullYear();
     for(let i=0; i<10; i++) {
-      yySelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value=\"${curYear+i}\">${curYear+i}</option>`));
+      yySelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value="${curYear+i}">${curYear+i}</option>`));
     }
   }
 
@@ -187,7 +187,7 @@
       // タイヤ点検アプリでプリロード済みのURLをセット。即座に表示される。
       splashImg.src = splashImgParam;
     } else {
-      const cacheKey = \"junkai:splash_images\";
+      const cacheKey = "junkai:splash_images";
       let cachedImages = [];
       try {
         const stored = localStorage.getItem(cacheKey);
@@ -202,7 +202,7 @@
       fetch(GITHUB_IMG_API)
         .then(res => res.json())
         .then(files => {
-          const images = files.filter(f => f.name.match(/\\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
+          const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
           if (images.length > 0) {
             try {
               localStorage.setItem(cacheKey, JSON.stringify(images));
