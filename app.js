@@ -1,180 +1,225 @@
+// 作業管理アプリ app.js Version: V1G (ストップウォッチ即時開始・GASキー名修正版)
 (() => {
+  const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
+  const splash = document.getElementById('splash');
+  const splashImg = document.getElementById('splashImg');
+  const toast = document.getElementById('toast');
+  const completeBtn = document.getElementById('completeBtn');
+  
   let startTime = null;
-  let timerInterval = null;
+  let timerId = null;
+  let currentVehicle = { station: '', model: '', plate_full: '' };
 
-  const showToast = (msg) => { 
-    const t = document.getElementById('toast'); 
-    if(t){ t.textContent = msg; t.hidden = false; setTimeout(()=>t.hidden=true, 2500); } 
-  };
-
-  /* --- 画像表示の爆速化とスプラッシュ解除 --- */
-  function handleSplash() {
-    const splash = document.getElementById('splash');
-    const splashImg = document.getElementById('splashImg');
-    if (!splash || !splashImg) return;
-
-    const params = new URLSearchParams(location.search);
-    const targetUrl = params.get('splash_img');
-    const cachedData = localStorage.getItem("junkai:preloaded_splash_data");
-    const cachedUrl = localStorage.getItem("junkai:preloaded_splash_url");
-
-    if (cachedData && cachedUrl === targetUrl) {
-      splashImg.src = cachedData;
-    } else if (targetUrl) {
-      splashImg.src = targetUrl;
+  // 電子音生成
+  function playBeep(type = 'success') {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if (type === 'success') {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    } else {
+      [0, 0.3, 0.6].forEach(t => {
+        osc.frequency.setValueAtTime(440, ctx.currentTime + t);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + t + 0.2);
+      });
+      osc.start(); osc.stop(ctx.currentTime + 0.8);
     }
+  }
 
-    const startWork = () => {
-      if (splash.style.display === 'none') return;
-      splash.style.display = 'none'; // 真っ黒な壁を解除
-      
-      startTime = Date.now();
-      timerInterval = setInterval(updateTimer, 1000);
-      
-      const unlockTimeDisp = document.getElementById('unlockTime');
-      if (unlockTimeDisp && (unlockTimeDisp.textContent === '--:--' || !unlockTimeDisp.textContent)) {
-        unlockTimeDisp.textContent = new Date().toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
-      }
+  function showToast(msg, isError = false) {
+    toast.textContent = msg;
+    toast.hidden = false;
+    toast.className = isError ? 'toast error' : 'toast';
+    if (!isError) setTimeout(() => toast.hidden = true, 3000);
+  }
 
-      // 画像を表示し終えた後に実体データを消去しメモリを空ける
-      localStorage.removeItem("junkai:preloaded_splash_data");
-      localStorage.removeItem("junkai:preloaded_splash_url");
+  // 確認モーダル表示プロミス
+  function showConfirmModal() {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('confirmModal');
+      const okBtn = document.getElementById('modalOkBtn');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+
+      modal.classList.add('show');
+
+      const handleResponse = (res) => {
+        modal.classList.remove('show');
+        okBtn.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(res);
+      };
+
+      okBtn.onclick = () => handleResponse(true);
+      cancelBtn.onclick = () => handleResponse(false);
+    });
+  }
+
+  // TMAリトライ送信 (最新ロジック)
+  async function triggerTmaWithRetry(plate, requestId) {
+    const intervals = [0, 3000, 5000];
+    for (let i = 0; i < 3; i++) {
+      try {
+        await new Promise(r => setTimeout(r, intervals[i]));
+        const res = await fetch(`${window.TMA_GAS_URL}?action=triggerTMA`, {
+          method: "POST",
+          body: JSON.stringify({ plate, requestId }),
+          keepalive: true
+        });
+        const json = await res.json();
+        if (json.ok) {
+          showToast("✅ TMA自動入力スタート");
+          return;
+        }
+      } catch (e) { console.warn(`TMA Retry ${i+1} failed`); }
+    }
+    showToast("❌ TMA送信失敗 (電波エラー)", true);
+    playBeep('error');
+  }
+
+  // ストップウォッチ開始 (呼出時から計測)
+  function startStopwatch() {
+    startTime = Date.now();
+    timerId = setInterval(() => {
+      const diff = Math.floor((Date.now() - startTime) / 1000);
+      const mm = String(Math.floor(diff / 60)).padStart(2, '0');
+      const ss = String(diff % 60).padStart(2, '0');
+      document.getElementById('stopwatch').textContent = `${mm}:${ss}`;
+    }, 1000);
+    
+    // 解錠時刻（計測開始時刻）を記録
+    const now = new Date();
+    document.getElementById('unlockTime').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+
+  // 作業完了処理 (自作モーダル版)
+  async function handleWorkComplete() {
+    const ok = await showConfirmModal();
+    if (!ok) return;
+
+    clearInterval(timerId);
+    completeBtn.disabled = true;
+    completeBtn.textContent = "送信中...";
+    
+    const now = new Date();
+    const lockTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    document.getElementById('lockTime').textContent = lockTime;
+
+    const payload = {
+      mode: 'lock_only',
+      station: currentVehicle.station,
+      plate_full: currentVehicle.plate_full,
+      model: currentVehicle.model,
+      unlock: document.getElementById('unlockTime').textContent,
+      lock: lockTime
     };
 
-    splashImg.onload = startWork;
-    splashImg.onerror = startWork;
-    splash.addEventListener('click', startWork);
-    setTimeout(startWork, 5000); // フリーズ防止のフォールバック
+    const body = new URLSearchParams();
+    body.set('key', window.SHEETS_KEY);
+    body.set('json', JSON.stringify(payload));
+
+    fetch(window.SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+      keepalive: true
+    }).catch(e => console.error(e));
+
+    try { localStorage.setItem("junkai:completed_plate", currentVehicle.plate_full); } catch(e){}
+
+    setTimeout(() => { history.back(); }, 100);
   }
 
-  function updateTimer() {
-    const diff = Date.now() - startTime;
-    const m = Math.floor(diff / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    const sw = document.getElementById('stopwatch');
-    if (sw) sw.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-
-  /* --- HTMLUI要素（ジュニアシート等）の復元と連動 --- */
-  function setupUI() {
-    const params = new URLSearchParams(location.search);
-    const st = params.get('station');
-    const md = params.get('model');
-    const pl = params.get('plate_full');
-    
-    if (st) document.getElementById('disp_station').textContent = st;
-    if (md) document.getElementById('disp_model').textContent = md;
-    if (pl) document.getElementById('disp_plate').textContent = pl;
-
+  function initUI() {
+    // トグルボタン切り替えロジック
     document.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const parent = btn.parentElement;
-        parent.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        const group = btn.parentElement;
+        group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       });
     });
 
-    const currentYear = new Date().getFullYear();
-    ['punk', 'flare'].forEach(prefix => {
-      const mmSel = document.getElementById(`sel_${prefix}_mm`);
-      const yySel = document.getElementById(`sel_${prefix}_yy`);
-      if (mmSel) {
-        for (let i = 1; i <= 12; i++) {
-          const opt = document.createElement('option');
-          opt.value = i; opt.textContent = i;
-          mmSel.appendChild(opt);
-        }
-      }
-      if (yySel) {
-        for (let i = 0; i < 10; i++) {
-          const opt = document.createElement('option');
-          opt.value = currentYear + i; opt.textContent = currentYear + i;
-          yySel.appendChild(opt);
-        }
-      }
-    });
-
-    const completeBtn = document.getElementById('completeBtn');
-    const confirmModal = document.getElementById('confirmModal');
-    const modalOkBtn = document.getElementById('modalOkBtn');
-    const modalCancelBtn = document.getElementById('modalCancelBtn');
-
-    if (completeBtn && confirmModal) {
-      completeBtn.addEventListener('click', () => confirmModal.classList.add('show'));
-      modalCancelBtn.addEventListener('click', () => confirmModal.classList.remove('show'));
-      modalOkBtn.addEventListener('click', async () => {
-        confirmModal.classList.remove('show');
-        clearInterval(timerInterval);
-        document.getElementById('lockTime').textContent = new Date().toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
-        
-        showToast('データ送信中...');
-        
-        // ★重要: 作業記録とTMAキックを同時に実行
-        await postToSheet();
-        await triggerTmaWithRetry();
-        
-        if (pl) localStorage.setItem('junkai:completed_plate', pl);
-        
-        setTimeout(() => {
-          history.back(); // 巡回アプリへ戻る
-        }, 1000);
-      });
+    // 年月プルダウン生成
+    const mmSelects = document.querySelectorAll('select[id$="_mm"]');
+    const yySelects = document.querySelectorAll('select[id$="_yy"]');
+    for(let i=1; i<=12; i++) {
+      mmSelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`));
     }
-  }
-
-  /* --- 実体マップに基づく Python（TMA）連携キックの復元 --- */
-  async function triggerTmaWithRetry(retryCount = 2) {
-    if (!window.TMA_GAS_URL) return;
-    const params = new URLSearchParams(location.search);
-    const tmaPlate = params.get('tma_plate') || params.get('plate_full');
-    const reqId = params.get('tma_req_id') || ("req-" + Date.now());
-    
-    const url = new URL(window.TMA_GAS_URL);
-    url.searchParams.set('action', 'triggerTma');
-    url.searchParams.set('plate', tmaPlate);
-    url.searchParams.set('req_id', reqId);
-
-    for (let i = 0; i <= retryCount; i++) {
-      try {
-        await fetch(url.toString(), { mode: 'no-cors' });
-        return true;
-      } catch (e) {
-        await new Promise(r => setTimeout(r, 1000));
-      }
-    }
-    return false;
-  }
-
-  async function postToSheet() {
-    if (!window.SHEETS_URL) return;
-    try {
-      const payload = {
-        station: document.getElementById('disp_station').textContent,
-        plate_full: document.getElementById('disp_plate').textContent,
-        model: document.getElementById('disp_model').textContent,
-        timestamp_iso: new Date().toISOString()
-      };
-      const body = new URLSearchParams();
-      body.set('key', window.SHEETS_KEY || '');
-      body.set('json', JSON.stringify(payload));
-      await fetch(window.SHEETS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body
-      });
-    } catch (e) {
-      console.error('postToSheet failed', e);
+    const curYear = new Date().getFullYear();
+    for(let i=0; i<10; i++) {
+      yySelects.forEach(s => s.insertAdjacentHTML('beforeend', `<option value="${curYear+i}">${curYear+i}</option>`));
     }
   }
 
   function init() {
-    handleSplash();
-    setupUI();
+    const p = new URLSearchParams(location.search);
+    currentVehicle.station = p.get('station') || '';
+    currentVehicle.model = p.get('model') || '';
+    currentVehicle.plate_full = p.get('plate_full') || p.get('plate') || '';
+
+    initUI();
+    completeBtn.addEventListener('click', handleWorkComplete);
+
+    // ★ストップウォッチを即座に開始 (スプラッシュ表示中もカウント)
+    startStopwatch();
+
+    splash.addEventListener('click', () => {
+      splash.style.display = 'none';
+      playBeep('success');
+      
+      const tmaPlate = p.get('tma_plate');
+      const tmaReqId = p.get('tma_req_id');
+      if (tmaPlate && tmaReqId) triggerTmaWithRetry(tmaPlate, tmaReqId);
+
+      // 車両情報表示
+      document.getElementById('disp_station').textContent = currentVehicle.station || '--';
+      document.getElementById('disp_model').textContent = currentVehicle.model || '--';
+      document.getElementById('disp_plate').textContent = currentVehicle.plate_full || '--';
+    }, { once: true });
+
+    // ★画像表示ロジック：パラメータ引き継ぎを最優先する
+    const splashImgParam = p.get('splash_img');
+    if (splashImgParam) {
+      // タイヤ点検アプリでプリロード済みのURLをセット。即座に表示される。
+      splashImg.src = splashImgParam;
+    } else {
+      const cacheKey = "junkai:splash_images";
+      let cachedImages = [];
+      try {
+        const stored = localStorage.getItem(cacheKey);
+        if (stored) {
+          cachedImages = JSON.parse(stored);
+          if (cachedImages.length > 0) {
+            splashImg.src = cachedImages[Math.floor(Math.random() * cachedImages.length)];
+          }
+        }
+      } catch(e) {}
+
+      fetch(GITHUB_IMG_API)
+        .then(res => res.json())
+        .then(files => {
+          const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
+          if (images.length > 0) {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify(images));
+            } catch(e) {}
+            
+            if (cachedImages.length === 0 && !splashImgParam) {
+              splashImg.src = images[Math.floor(Math.random() * images.length)];
+            }
+          }
+        })
+        .catch(() => {
+          if (cachedImages.length === 0 && !splashImgParam) {
+            splashImg.style.display = 'none';
+          }
+        });
+    }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
+  init();
 })();
