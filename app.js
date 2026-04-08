@@ -10,7 +10,6 @@
   let lastRowElement = null; 
   let audioCtx = null; 
   let abortController = new AbortController();
-  let isCheckingAssets = false;
 
   const form = document.getElementById('form');
   const submitBtn = document.getElementById('submitBtn');
@@ -21,11 +20,6 @@
   const backBtn    = document.getElementById('backBtn');
   const keypad = document.getElementById('customKeypad');
   const mainWrap = document.getElementById('mainWrap');
-  const loadingOverlay = document.getElementById('loadingOverlay');
-  const progressBar = document.getElementById('progressBar');
-  const progressText = document.getElementById('progressText');
-  const progressWrap = document.getElementById('progressWrap');
-  const loadingMsg = document.getElementById('loadingMsg');
 
   const qs = (s, root=document) => root.querySelector(s);
   const gv = (sel) => { const el = typeof sel==='string'? qs(sel): sel; return (el && el.value||'').trim(); };
@@ -38,7 +32,6 @@
     'tread_rr','pre_rr','dot_rr'
   ];
 
-  /* --- 音声・基本UI制御 --- */
   function playClickSound(){
     if(!audioCtx) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -75,19 +68,22 @@
       if(!span) return;
       let v = '';
       let raw = (prev && prev[id] != null && String(prev[id]).trim() !== '') ? prev[id] : null;
-      if(raw === null) v = fallbackFor(id);
-      else {
+      if(raw === null){
+        v = fallbackFor(id);
+      } else {
         if(id.startsWith('tread')){
           const num = parseFloat(raw);
           v = !isNaN(num) ? num.toFixed(1) : String(raw).trim();
-        }else if(id.startsWith('dot')) v = String(raw).trim().padStart(4, '0');
-        else v = String(raw).trim();
+        }else if(id.startsWith('dot')){
+          v = String(raw).trim().padStart(4, '0');
+        }else{
+          v = String(raw).trim();
+        }
       }
       span.textContent = `(${v})`;
     });
   }
 
-  /* --- 通信制御 --- */
   async function fetchSheetData(){
     const st = gv('[name="station"]');
     const md = gv('[name="model"]');
@@ -110,7 +106,10 @@
       if(data.std_f && f && !f.value) f.value = data.std_f;
       if(data.std_r && r && !r.value) r.value = data.std_r;
       applyPrev(data.prev || {});
-    }catch(err){ console.error('fetchSheetData failed', err); throw err; }
+    }catch(err){ 
+      console.error('fetchSheetData failed', err);
+      throw err;
+    }
   }
 
   async function postToSheet(){
@@ -129,7 +128,11 @@
       showToast('送信完了');
       const pf = gv('[name="plate_full"]');
       if (pf) localStorage.setItem('junkai:tire_completed_plate', pf);
-    }catch(err){ console.error(err); showToast('送信失敗'); throw err; }
+    }catch(err){ 
+      console.error(err); 
+      showToast('送信失敗'); 
+      throw err;
+    }
   }
 
   function collectPayload(){
@@ -154,99 +157,25 @@
     return `${jst.getFullYear()}/${String(jst.getMonth() + 1).padStart(2,'0')}/${String(jst.getDate()).padStart(2,'0')} ${jst.getHours()}:${String(jst.getMinutes()).padStart(2,'0')}:${String(jst.getSeconds()).padStart(2,'0')}`;
   }
 
-  /* --- IndexedDB 制御 --- */
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+  function applyUrl(){
+    const p = new URLSearchParams(location.search);
+    isSingleMode = (p.get('mode') === 'single');
+    ['station','plate_full','model'].forEach(name => {
+      const v = p.get(name);
+      if(v) { const el = qs(`[name="${name}"]`); if(el) el.value = v; }
     });
   }
 
-  async function getStoredKeys() {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const trans = db.transaction(STORE_NAME, "readonly");
-      const store = trans.objectStore(STORE_NAME);
-      const req = store.getAllKeys();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+  function wire(){
+    ['station','plate_full','model'].forEach(name =>{
+      document.querySelectorAll(`[name="${name}"]`).forEach(el=>{
+        const h = ()=>{ fetchSheetData(); };
+        el.addEventListener('change', h, {passive:true});
+        el.addEventListener('input',  h, {passive:true});
+      });
     });
   }
 
-  async function saveImage(url, blob) {
-    const db = await openDB();
-    const reader = new FileReader();
-    return new Promise((resolve, reject) => {
-      reader.onloadend = () => {
-        const trans = db.transaction(STORE_NAME, "readwrite");
-        trans.objectStore(STORE_NAME).put(reader.result, url);
-        trans.oncomplete = () => resolve();
-        trans.onerror = () => reject(trans.error);
-      };
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  async function getRandomAsset() {
-    const keys = await getStoredKeys();
-    if (keys.length === 0) return null;
-    const key = keys[Math.floor(Math.random() * keys.length)];
-    const db = await openDB();
-    return new Promise(r => {
-      const req = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(key);
-      req.onsuccess = () => r(req.result);
-      req.onerror = () => r(null);
-    });
-  }
-
-  /* --- 一括読み込みロジック --- */
-  async function syncAssets() {
-    if (isCheckingAssets) return;
-    isCheckingAssets = true;
-    try {
-      const res = await fetch(GITHUB_IMG_API, { signal: abortController.signal });
-      if (!res.ok) throw new Error("API failed");
-      const files = await res.json();
-      const remoteUrls = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
-      
-      const localKeys = await getStoredKeys();
-      const targets = remoteUrls.filter(url => !localKeys.includes(url));
-
-      if (targets.length > 0) {
-        // ダウンロードが必要な場合のみプログレス表示
-        loadingMsg.textContent = "データをダウンロードしています";
-        progressWrap.hidden = false;
-        let done = 0;
-        for (const url of targets) {
-          const imgRes = await fetch(url, { signal: abortController.signal });
-          if (imgRes.ok) {
-            const blob = await imgRes.blob();
-            await saveImage(url, blob);
-          }
-          done++;
-          const pct = Math.floor((done / targets.length) * 100);
-          progressBar.style.width = pct + "%";
-          progressText.textContent = pct + "%";
-        }
-      }
-      
-      // 在庫から1枚選んでセット（次アプリ用）
-      const splash = await getRandomAsset();
-      if (splash) localStorage.setItem("junkai:preloaded_splash_url", splash);
-
-    } catch (e) {
-      if (e.name !== 'AbortError') console.warn("Asset sync failed", e);
-    } finally {
-      // 完了したらフォームを表示
-      loadingOverlay.style.display = 'none';
-      mainWrap.style.visibility = 'visible';
-      isCheckingAssets = false;
-    }
-  }
-
-  /* --- 初期化・イベント --- */
   const AUTO_SEQUENCE = ['std_f','std_r','tread_rf','pre_rf','dot_rf','tread_lf','pre_lf','dot_lf','tread_lr','pre_lr','dot_lr','tread_rr','pre_rr','dot_rr','submitBtn'];
   const FIELD_RULES = {
     std_f: {len:3}, std_r: {len:3},
@@ -271,20 +200,35 @@
       lastRowElement = null;
       return;
     }
+    
     const nextEl = document.getElementById(nextId) || document.querySelector(`[name="${nextId}"]`);
-    if(nextEl) nextEl.focus({ preventScroll: true });
+    if(nextEl) {
+      nextEl.focus({ preventScroll: true });
+    }
   }
 
   function showKeypad(target){
     keypad.classList.add('show');
+    
     const currentRow = target.closest('.tire-row, .std-row') || target.parentElement;
     if(!currentRow) return;
     const vv = window.visualViewport;
     const vh = vv ? vv.height : window.innerHeight;
     const kbRect = keypad.getBoundingClientRect();
-    const naturalBottom = currentRow.getBoundingClientRect().bottom - new WebKitCSSMatrix(getComputedStyle(mainWrap).transform).m42;
-    const threshold = vh - kbRect.height;
-    mainWrap.style.transform = naturalBottom > threshold ? `translateY(-${naturalBottom - threshold + 20}px)` : 'translateY(0)';
+    const kbHeight = kbRect.height;
+
+    const rect = currentRow.getBoundingClientRect(); 
+    const currentMatrix = new WebKitCSSMatrix(getComputedStyle(mainWrap).transform);
+    const currentY = currentMatrix.m42;
+    const naturalBottom = rect.bottom - currentY;
+    const threshold = vh - kbHeight;
+    if(naturalBottom > threshold){
+      const shift = naturalBottom - threshold + 20;
+      mainWrap.style.transform = `translateY(-${shift}px)`;
+    } else {
+      mainWrap.style.transform = 'translateY(0)';
+    }
+    
     lastRowElement = currentRow;
   }
 
@@ -320,14 +264,19 @@
       }
       const btn = e.target.closest('.key');
       if(!btn || !currentFocusInput) return;
-      e.preventDefault(); playClickSound();
+      e.preventDefault();
+      playClickSound();
       const val = btn.getAttribute('data-val');
       if(val === 'bs') currentFocusInput.value = currentFocusInput.value.slice(0, -1);
       else if(val !== null) currentFocusInput.value += val;
-      else if(btn.id === 'keyClose') { hideKeypad(); return; }
+      else if(btn.id === 'keyClose') {
+        hideKeypad();
+        return;
+      }
       currentFocusInput.dispatchEvent(new Event('input', { bubbles: true }));
     }, {passive: false});
     document.getElementById('keyClose').addEventListener('click', hideKeypad);
+    
     document.addEventListener('touchstart', e => {
       if(!keypad.contains(e.target) && !e.target.matches('input[inputmode="none"]')) {
         if(keypad.classList.contains('show')) hideKeypad();
@@ -335,42 +284,109 @@
     }, {passive:true});
   }
 
+  /* --- IndexedDB 関連 --- */
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function getStoredImages() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const trans = db.transaction(STORE_NAME, "readonly");
+      const store = trans.objectStore(STORE_NAME);
+      const req = store.getAllKeys();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function saveImage(url, blob) {
+    const db = await openDB();
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onloadend = () => {
+        const trans = db.transaction(STORE_NAME, "readwrite");
+        const store = trans.objectStore(STORE_NAME);
+        store.put(reader.result, url);
+        trans.oncomplete = () => resolve();
+        trans.onerror = () => reject(trans.error);
+      };
+      reader.onerror = () => reject(new Error("FileReader failed"));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function getRandomStoredImageData() {
+    const keys = await getStoredImages();
+    if (keys.length === 0) return null;
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const trans = db.transaction(STORE_NAME, "readonly");
+      const req = trans.objectStore(STORE_NAME).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+  }
+
+  /* --- 蓄積・プリロード管理 --- */
+  async function preloadWorkSplash() {
+    try {
+      // 1. ローカル在庫からランダムに1枚選んで設定しておく（次アプリ用）
+      const cachedData = await getRandomStoredImageData();
+      if (cachedData) {
+        localStorage.setItem("junkai:preloaded_splash_url", cachedData);
+      }
+
+      // 2. 測定中の時間を利用して新規画像を収集
+      const res = await fetch(GITHUB_IMG_API, { signal: abortController.signal });
+      if (!res.ok) throw new Error("Image API fetch failed");
+      const files = await res.json();
+      const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
+      
+      const storedKeys = await getStoredImages();
+      const newImages = images.filter(url => !storedKeys.includes(url));
+
+      for (const url of newImages) {
+        // 保存ボタンが押されたらループを抜ける（AbortErrorでキャッチ）
+        const imgRes = await fetch(url, { signal: abortController.signal });
+        if (imgRes.ok) {
+          const blob = await imgRes.blob();
+          await saveImage(url, blob);
+        }
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') {
+        console.log("Preload aborted for submission priority.");
+      } else {
+        console.warn("Splash preload failed", e);
+      }
+    }
+  }
+
   function init(){
-    // 起動直後に在庫チェック
-    syncAssets();
-    
-    const p = new URLSearchParams(location.search);
-    isSingleMode = (p.get('mode') === 'single');
-    ['station','plate_full','model'].forEach(name => {
-      const v = p.get(name);
-      if(v) { const el = qs(`[name="${name}"]`); if(el) el.value = v; }
-    });
-    
-    showPrevPlaceholders(); fetchSheetData();
-    ['station','plate_full','model'].forEach(name =>{
-      document.querySelectorAll(`[name="${name}"]`).forEach(el=>{
-        const h = ()=>{ fetchSheetData(); };
-        el.addEventListener('change', h, {passive:true});
-        el.addEventListener('input',  h, {passive:true});
-      });
-    });
-    
-    setupAutoAdvance(); setupCustomKeypad();
-    
+    applyUrl(); showPrevPlaceholders(); fetchSheetData(); wire(); setupAutoAdvance(); setupCustomKeypad();
+    preloadWorkSplash(); 
     if(form){
       form.addEventListener('submit', async ev => {
         ev.preventDefault();
-        // 保存優先: 全ての画像通信を遮断
+        
+        // ★重要: 保存ボタン押下時にバックグラウンド通信をすべて強制切断
         abortController.abort();
         
-        const payload = collectPayload();
-        if(resHeader) resHeader.textContent = (payload.station ? payload.station + '\n' : '') + payload.plate_full + '\n' + payload.model;
+        const p = collectPayload();
+        if(resHeader) resHeader.textContent = (p.station ? p.station + '\n' : '') + p.plate_full + '\n' + p.model;
         const lines = [
-          (payload.std_f && payload.std_r ? `${payload.std_f}-${payload.std_r}` : ''),
-          `${payload.tread_rf||''} ${payload.pre_rf||''} ${payload.dot_rf||''}  RF`,
-          `${payload.tread_lf||''} ${payload.pre_lf||''} ${payload.dot_lf||''}  LF`,
-          `${payload.tread_lr||''} ${payload.pre_lr||''} ${payload.dot_lr||''}  LR`,
-          `${payload.tread_rr||''} ${payload.pre_rr||''} ${payload.dot_rr||''}  RR`,
+          (p.std_f && p.std_r ? `${p.std_f}-${p.std_r}` : ''),
+          `${p.tread_rf||''} ${p.pre_rf||''} ${p.dot_rf||''}  RF`,
+          `${p.tread_lf||''} ${p.pre_lf||''} ${p.dot_lf||''}  LF`,
+          `${p.tread_lr||''} ${p.pre_lr||''} ${p.dot_lr||''}  LR`,
+          `${p.tread_rr||''} ${p.pre_rr||''} ${p.dot_rr||''}  RR`,
           '', new Date().toLocaleString('ja-JP')
         ];
         if(resLines) resLines.textContent = lines.join('\n');
@@ -384,9 +400,12 @@
       });
     }
     if(backBtn) backBtn.addEventListener('click', () => { 
+      // アボートコントローラーを再初期化してプリロードを再開可能にする
+      abortController = new AbortController();
       resultCard.style.display = 'none'; 
       form.style.display = 'block'; 
       window.scrollTo({top:0}); 
+      preloadWorkSplash();
     });
   }
 
