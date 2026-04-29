@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1J (モーダル文言書き換えロジック強化版)
+// 作業管理アプリ app.js Version: V1J (index.html構造に完全準拠・タイマー/アラーム搭載)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -10,13 +10,11 @@
   let timerId = null;
   let currentVehicle = { station: '', model: '', plate_full: '' };
 
-  // アラーム・監視・音源用の変数
   let tmaMonitorTimer = null;
   let alarmInterval = null;
   let isTmaSuccess = false;
   let audioCtx = null;
 
-  // 電子音生成
   function playBeep(type = 'success') {
     if (!audioCtx) return;
     const osc = audioCtx.createOscillator();
@@ -63,19 +61,18 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // 確認モーダル表示プロミス (文言書き換えロジックを強化)
+  // index.htmlの .modal-msg を確実に書き換えるロジック
   function showConfirmModal(titleText, bodyText, okText = "OK", cancelText = "キャンセル") {
     return new Promise((resolve) => {
       const modal = document.getElementById('confirmModal');
+      const msgEl = modal.querySelector('.modal-msg');
       const okBtn = document.getElementById('modalOkBtn');
       const cancelBtn = document.getElementById('modalCancelBtn');
 
-      // 見出しと本文の要素を多角的に探索して書き換える
-      const titleEl = modal.querySelector('h2, .modal-title, [class*="title"]');
-      const bodyEl = modal.querySelector('p, .modal-body, [class*="body"], [class*="message"]');
-      
-      if (titleEl) titleEl.textContent = titleText;
-      if (bodyEl) bodyEl.textContent = bodyText;
+      // 単一のメッセージエリアにタイトルと本文を結合して流し込む
+      if (msgEl) {
+        msgEl.innerHTML = `<strong>${titleText}</strong><br><span style="font-size:0.9em;">${bodyText}</span>`;
+      }
       if (okBtn) okBtn.textContent = okText;
       if (cancelBtn) cancelBtn.textContent = cancelText;
 
@@ -93,7 +90,6 @@
     });
   }
 
-  // TMAリトライ送信 (監視タイマー付き)
   async function triggerTmaWithRetry(plate, requestId) {
     isTmaSuccess = false;
     if (tmaMonitorTimer) clearTimeout(tmaMonitorTimer);
@@ -101,7 +97,6 @@
     tmaMonitorTimer = setTimeout(async () => {
       if (!isTmaSuccess) {
         startAlarmLoop();
-        // ★ご指定の文言へ修正
         const retry = await showConfirmModal(
           "⚠️ 自動入力失敗！",
           "TMA自動入力の通信に失敗しました、再送しますか？",
@@ -182,7 +177,6 @@
     }).catch(e => console.error(e));
 
     try { localStorage.setItem("junkai:completed_plate", currentVehicle.plate_full); } catch(e){}
-
     setTimeout(() => { history.back(); }, 100);
   }
 
@@ -194,7 +188,6 @@
         btn.classList.add('active');
       });
     });
-
     const mmSelects = document.querySelectorAll('select[id$="_mm"]');
     const yySelects = document.querySelectorAll('select[id$="_yy"]');
     for(let i=1; i<=12; i++) {
@@ -214,16 +207,11 @@
 
     initUI();
     completeBtn.addEventListener('click', handleWorkComplete);
-
     startStopwatch();
 
     splash.addEventListener('click', () => {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
 
       splash.style.display = 'none';
       playBeep('success');
@@ -245,12 +233,7 @@
       let cachedImages = [];
       try {
         const stored = localStorage.getItem(cacheKey);
-        if (stored) {
-          cachedImages = JSON.parse(stored);
-          if (cachedImages.length > 0) {
-            splashImg.src = cachedImages[Math.floor(Math.random() * cachedImages.length)];
-          }
-        }
+        if (stored) cachedImages = JSON.parse(stored);
       } catch(e) {}
 
       fetch(GITHUB_IMG_API)
@@ -258,21 +241,14 @@
         .then(files => {
           const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
           if (images.length > 0) {
-            try {
-              localStorage.setItem(cacheKey, JSON.stringify(images));
-            } catch(e) {}
-            if (cachedImages.length === 0 && !splashImgParam) {
-              splashImg.src = images[Math.floor(Math.random() * images.length)];
-            }
+            try { localStorage.setItem(cacheKey, JSON.stringify(images)); } catch(e) {}
+            if (cachedImages.length === 0 && !splashImgParam) splashImg.src = images[Math.floor(Math.random() * images.length)];
           }
         })
         .catch(() => {
-          if (cachedImages.length === 0 && !splashImgParam) {
-            splashImg.style.display = 'none';
-          }
+          if (cachedImages.length === 0 && !splashImgParam) splashImg.style.display = 'none';
         });
     }
   }
-
   init();
 })();
