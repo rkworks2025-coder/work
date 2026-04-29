@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1H (30秒監視アラート・TMA再送モーダル追加版)
+// 作業管理アプリ app.js Version: V1I (音のアンロック対応・文言修正版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -10,36 +10,38 @@
   let timerId = null;
   let currentVehicle = { station: '', model: '', plate_full: '' };
 
-  // アラーム・監視用の変数
+  // アラーム・監視・音源用の変数
   let tmaMonitorTimer = null;
   let alarmInterval = null;
   let isTmaSuccess = false;
+  let audioCtx = null; // 音源コンテキストを保持
 
   // 電子音生成
   function playBeep(type = 'success') {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
+    // コンテキストが未作成、または停止している場合は何もしない（アンロックが必要）
+    if (!audioCtx) return;
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
     
     if (type === 'success') {
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      osc.start(); osc.stop(ctx.currentTime + 0.2);
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
     } else if (type === 'alarm') {
-      // iPhoneクラシックアラーム風（少し大きめ・高音の反復）
       osc.type = 'square';
-      osc.frequency.setValueAtTime(1000, ctx.currentTime);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime); // 少し大きめ
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-      osc.start(); osc.stop(ctx.currentTime + 0.2);
+      osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
     } else {
       [0, 0.3, 0.6].forEach(t => {
-        osc.frequency.setValueAtTime(440, ctx.currentTime + t);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime + t);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + t + 0.2);
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime + t);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + 0.2);
       });
-      osc.start(); osc.stop(ctx.currentTime + 0.8);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.8);
     }
   }
 
@@ -65,36 +67,25 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // 確認モーダル表示プロミス (再送アラート用にも流用)
+  // 確認モーダル表示プロミス (再送アラート用に最適化)
   function showConfirmModal(title = "作業完了", msg = "送信して終了しますか？", okText = "OK", cancelText = "キャンセル") {
     return new Promise((resolve) => {
       const modal = document.getElementById('confirmModal');
-      const titleEl = modal.querySelector('h2') || { textContent: "" };
-      const msgEl = modal.querySelector('p') || { textContent: "" };
       const okBtn = document.getElementById('modalOkBtn');
       const cancelBtn = document.getElementById('modalCancelBtn');
 
-      // テキストの差し替え（既存のHTML構造を維持）
-      const originalTitle = titleEl.textContent;
-      const originalMsg = msgEl.textContent;
-      const originalOk = okBtn.textContent;
-      const originalCancel = cancelBtn.textContent;
-
-      titleEl.textContent = title;
-      msgEl.textContent = msg;
-      okBtn.textContent = okText;
-      cancelBtn.textContent = cancelText;
+      // 文言の書き換えを確実に実行
+      const titleEl = modal.querySelector('h2');
+      const msgEl = modal.querySelector('p');
+      if (titleEl) titleEl.textContent = title;
+      if (msgEl) msgEl.textContent = msg;
+      if (okBtn) okBtn.textContent = okText;
+      if (cancelBtn) cancelBtn.textContent = cancelText;
 
       modal.classList.add('show');
 
       const handleResponse = (res) => {
         modal.classList.remove('show');
-        // 元に戻す
-        titleEl.textContent = originalTitle;
-        msgEl.textContent = originalMsg;
-        okBtn.textContent = originalOk;
-        cancelBtn.textContent = originalCancel;
-        
         okBtn.onclick = null;
         cancelBtn.onclick = null;
         resolve(res);
@@ -107,7 +98,6 @@
 
   // TMAリトライ送信 (監視タイマー付き)
   async function triggerTmaWithRetry(plate, requestId) {
-    // 監視開始
     isTmaSuccess = false;
     if (tmaMonitorTimer) clearTimeout(tmaMonitorTimer);
     
@@ -116,7 +106,7 @@
         startAlarmLoop();
         const retry = await showConfirmModal(
           "⚠️ 自動入力失敗！",
-          "30秒経過しても応答がありません。\n命令を再送しますか？",
+          "TMA自動入力の通信に失敗しました、再送しますか？",
           "再送する",
           "キャンセル"
         );
@@ -145,10 +135,8 @@
         }
       } catch (e) { console.warn(`TMA Retry ${i+1} failed`); }
     }
-    // 3回リトライ失敗時（監視タイマーは継続中なのでここでは何もしない。30秒待機に委ねる）
   }
 
-  // ストップウォッチ開始 (呼出時から計測)
   function startStopwatch() {
     startTime = Date.now();
     timerId = setInterval(() => {
@@ -158,18 +146,17 @@
       document.getElementById('stopwatch').textContent = `${mm}:${ss}`;
     }, 1000);
     
-    // 解錠時刻（計測開始時刻）を記録
     const now = new Date();
     document.getElementById('unlockTime').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
 
-  // 作業完了処理 (自作モーダル版)
   async function handleWorkComplete() {
-    const ok = await showConfirmModal();
+    // デフォルト文言でモーダルを表示
+    const ok = await showConfirmModal("作業完了", "送信して終了しますか？", "OK", "キャンセル");
     if (!ok) return;
 
     clearInterval(timerId);
-    if (tmaMonitorTimer) clearTimeout(tmaMonitorTimer); // 作業終了時は監視も停止
+    if (tmaMonitorTimer) clearTimeout(tmaMonitorTimer);
     completeBtn.disabled = true;
     completeBtn.textContent = "送信中...";
     
@@ -234,6 +221,14 @@
     startStopwatch();
 
     splash.addEventListener('click', () => {
+      // ★ 音源のアンロック処理（ユーザー操作に同期させる）
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
       splash.style.display = 'none';
       playBeep('success');
       
