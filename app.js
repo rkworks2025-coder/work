@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1I (音のアンロック対応・文言修正版)
+// 作業管理アプリ app.js Version: V1J (モーダル文言書き換えロジック強化版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -14,13 +14,11 @@
   let tmaMonitorTimer = null;
   let alarmInterval = null;
   let isTmaSuccess = false;
-  let audioCtx = null; // 音源コンテキストを保持
+  let audioCtx = null;
 
   // 電子音生成
   function playBeep(type = 'success') {
-    // コンテキストが未作成、または停止している場合は何もしない（アンロックが必要）
     if (!audioCtx) return;
-    
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
@@ -45,14 +43,12 @@
     }
   }
 
-  // アラームループの開始
   function startAlarmLoop() {
     if (alarmInterval) return;
     playBeep('alarm');
     alarmInterval = setInterval(() => playBeep('alarm'), 500);
   }
 
-  // アラームループの停止
   function stopAlarmLoop() {
     if (alarmInterval) {
       clearInterval(alarmInterval);
@@ -67,18 +63,19 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // 確認モーダル表示プロミス (再送アラート用に最適化)
-  function showConfirmModal(title = "作業完了", msg = "送信して終了しますか？", okText = "OK", cancelText = "キャンセル") {
+  // 確認モーダル表示プロミス (文言書き換えロジックを強化)
+  function showConfirmModal(titleText, bodyText, okText = "OK", cancelText = "キャンセル") {
     return new Promise((resolve) => {
       const modal = document.getElementById('confirmModal');
       const okBtn = document.getElementById('modalOkBtn');
       const cancelBtn = document.getElementById('modalCancelBtn');
 
-      // 文言の書き換えを確実に実行
-      const titleEl = modal.querySelector('h2');
-      const msgEl = modal.querySelector('p');
-      if (titleEl) titleEl.textContent = title;
-      if (msgEl) msgEl.textContent = msg;
+      // 見出しと本文の要素を多角的に探索して書き換える
+      const titleEl = modal.querySelector('h2, .modal-title, [class*="title"]');
+      const bodyEl = modal.querySelector('p, .modal-body, [class*="body"], [class*="message"]');
+      
+      if (titleEl) titleEl.textContent = titleText;
+      if (bodyEl) bodyEl.textContent = bodyText;
       if (okBtn) okBtn.textContent = okText;
       if (cancelBtn) cancelBtn.textContent = cancelText;
 
@@ -104,6 +101,7 @@
     tmaMonitorTimer = setTimeout(async () => {
       if (!isTmaSuccess) {
         startAlarmLoop();
+        // ★ご指定の文言へ修正
         const retry = await showConfirmModal(
           "⚠️ 自動入力失敗！",
           "TMA自動入力の通信に失敗しました、再送しますか？",
@@ -151,7 +149,6 @@
   }
 
   async function handleWorkComplete() {
-    // デフォルト文言でモーダルを表示
     const ok = await showConfirmModal("作業完了", "送信して終了しますか？", "OK", "キャンセル");
     if (!ok) return;
 
@@ -221,7 +218,6 @@
     startStopwatch();
 
     splash.addEventListener('click', () => {
-      // ★ 音源のアンロック処理（ユーザー操作に同期させる）
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
