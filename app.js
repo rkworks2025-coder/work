@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1G (ストップウォッチ即時開始・GASキー名修正版)
+// 作業管理アプリ app.js Version: V1H (30秒監視アラート・TMA再送モーダル追加版)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -10,15 +10,28 @@
   let timerId = null;
   let currentVehicle = { station: '', model: '', plate_full: '' };
 
+  // アラーム・監視用の変数
+  let tmaMonitorTimer = null;
+  let alarmInterval = null;
+  let isTmaSuccess = false;
+
   // 電子音生成
   function playBeep(type = 'success') {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
+    
     if (type === 'success') {
       osc.frequency.setValueAtTime(880, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    } else if (type === 'alarm') {
+      // iPhoneクラシックアラーム風（少し大きめ・高音の反復）
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1000, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime); // 少し大きめ
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
       osc.start(); osc.stop(ctx.currentTime + 0.2);
     } else {
       [0, 0.3, 0.6].forEach(t => {
@@ -30,6 +43,21 @@
     }
   }
 
+  // アラームループの開始
+  function startAlarmLoop() {
+    if (alarmInterval) return;
+    playBeep('alarm');
+    alarmInterval = setInterval(() => playBeep('alarm'), 500);
+  }
+
+  // アラームループの停止
+  function stopAlarmLoop() {
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+  }
+
   function showToast(msg, isError = false) {
     toast.textContent = msg;
     toast.hidden = false;
@@ -37,17 +65,36 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // 確認モーダル表示プロミス
-  function showConfirmModal() {
+  // 確認モーダル表示プロミス (再送アラート用にも流用)
+  function showConfirmModal(title = "作業完了", msg = "送信して終了しますか？", okText = "OK", cancelText = "キャンセル") {
     return new Promise((resolve) => {
       const modal = document.getElementById('confirmModal');
+      const titleEl = modal.querySelector('h2') || { textContent: "" };
+      const msgEl = modal.querySelector('p') || { textContent: "" };
       const okBtn = document.getElementById('modalOkBtn');
       const cancelBtn = document.getElementById('modalCancelBtn');
+
+      // テキストの差し替え（既存のHTML構造を維持）
+      const originalTitle = titleEl.textContent;
+      const originalMsg = msgEl.textContent;
+      const originalOk = okBtn.textContent;
+      const originalCancel = cancelBtn.textContent;
+
+      titleEl.textContent = title;
+      msgEl.textContent = msg;
+      okBtn.textContent = okText;
+      cancelBtn.textContent = cancelText;
 
       modal.classList.add('show');
 
       const handleResponse = (res) => {
         modal.classList.remove('show');
+        // 元に戻す
+        titleEl.textContent = originalTitle;
+        msgEl.textContent = originalMsg;
+        okBtn.textContent = originalOk;
+        cancelBtn.textContent = originalCancel;
+        
         okBtn.onclick = null;
         cancelBtn.onclick = null;
         resolve(res);
@@ -58,8 +105,28 @@
     });
   }
 
-  // TMAリトライ送信 (最新ロジック)
+  // TMAリトライ送信 (監視タイマー付き)
   async function triggerTmaWithRetry(plate, requestId) {
+    // 監視開始
+    isTmaSuccess = false;
+    if (tmaMonitorTimer) clearTimeout(tmaMonitorTimer);
+    
+    tmaMonitorTimer = setTimeout(async () => {
+      if (!isTmaSuccess) {
+        startAlarmLoop();
+        const retry = await showConfirmModal(
+          "⚠️ 自動入力失敗！",
+          "30秒経過しても応答がありません。\n命令を再送しますか？",
+          "再送する",
+          "キャンセル"
+        );
+        stopAlarmLoop();
+        if (retry) {
+          triggerTmaWithRetry(plate, requestId);
+        }
+      }
+    }, 30000);
+
     const intervals = [0, 3000, 5000];
     for (let i = 0; i < 3; i++) {
       try {
@@ -71,13 +138,14 @@
         });
         const json = await res.json();
         if (json.ok) {
+          isTmaSuccess = true;
+          clearTimeout(tmaMonitorTimer);
           showToast("✅ TMA自動入力スタート");
           return;
         }
       } catch (e) { console.warn(`TMA Retry ${i+1} failed`); }
     }
-    showToast("❌ TMA送信失敗 (電波エラー)", true);
-    playBeep('error');
+    // 3回リトライ失敗時（監視タイマーは継続中なのでここでは何もしない。30秒待機に委ねる）
   }
 
   // ストップウォッチ開始 (呼出時から計測)
@@ -101,6 +169,7 @@
     if (!ok) return;
 
     clearInterval(timerId);
+    if (tmaMonitorTimer) clearTimeout(tmaMonitorTimer); // 作業終了時は監視も停止
     completeBtn.disabled = true;
     completeBtn.textContent = "送信中...";
     
@@ -134,7 +203,6 @@
   }
 
   function initUI() {
-    // トグルボタン切り替えロジック
     document.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const group = btn.parentElement;
@@ -143,7 +211,6 @@
       });
     });
 
-    // 年月プルダウン生成
     const mmSelects = document.querySelectorAll('select[id$="_mm"]');
     const yySelects = document.querySelectorAll('select[id$="_yy"]');
     for(let i=1; i<=12; i++) {
@@ -164,7 +231,6 @@
     initUI();
     completeBtn.addEventListener('click', handleWorkComplete);
 
-    // ★ストップウォッチを即座に開始 (スプラッシュ表示中もカウント)
     startStopwatch();
 
     splash.addEventListener('click', () => {
@@ -175,16 +241,13 @@
       const tmaReqId = p.get('tma_req_id');
       if (tmaPlate && tmaReqId) triggerTmaWithRetry(tmaPlate, tmaReqId);
 
-      // 車両情報表示
       document.getElementById('disp_station').textContent = currentVehicle.station || '--';
       document.getElementById('disp_model').textContent = currentVehicle.model || '--';
       document.getElementById('disp_plate').textContent = currentVehicle.plate_full || '--';
     }, { once: true });
 
-    // ★画像表示ロジック：パラメータ引き継ぎを最優先する
     const splashImgParam = p.get('splash_img');
     if (splashImgParam) {
-      // タイヤ点検アプリでプリロード済みのURLをセット。即座に表示される。
       splashImg.src = splashImgParam;
     } else {
       const cacheKey = "junkai:splash_images";
@@ -207,7 +270,6 @@
             try {
               localStorage.setItem(cacheKey, JSON.stringify(images));
             } catch(e) {}
-            
             if (cachedImages.length === 0 && !splashImgParam) {
               splashImg.src = images[Math.floor(Math.random() * images.length)];
             }
