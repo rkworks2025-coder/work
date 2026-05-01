@@ -1,6 +1,6 @@
 // 作業管理アプリ app.js Version: V1J (index.html構造に完全準拠・タイマー/アラーム搭載)
 (() => {
-  const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/TJM_work/contents/img"; 
+  const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
   const splashImg = document.getElementById('splashImg');
   const toast = document.getElementById('toast');
