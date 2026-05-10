@@ -30,11 +30,16 @@ border:1px solid #333; z-index:100; }
 .info-item .label { color: var(--muted); font-weight: normal; font-size: 12px; display: inline-block; width: 35px;
 }
 
-/* ストップウォッチの圧縮 (margin 20px -> 8px, font 56px -> 42px) */
-.stopwatch-container { text-align: center; margin: 8px 0;
+/* ▼ 変更: ストップウォッチエリアをflex化してTMAボタンと横並びに */
+.stopwatch-container { display: flex; align-items: center; margin: 8px 0; }
+/* ストップウォッチは左エリア(flex:1)内で右寄せ → 視覚的に中央寄り */
+#stopwatch { flex: 1; text-align: center; font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 1px; color: #fff; line-height: 1; text-shadow: 0 0 8px rgba(255,140,0,0.3);
 }
-#stopwatch { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 1px; color: #fff; line-height: 1; text-shadow: 0 0 8px rgba(255,140,0,0.3);
-}
+
+/* ▼ 追加: TMAボタン (巡回アプリのスタイルをそのまま流用) */
+.tma-btn { margin-left: 12px; padding: 8px 14px; font-size: 13px; border-radius: 10px; border: 1px solid #0d9488; background: var(--bg); color: #2dd4bf; cursor: pointer; font-weight: 700; white-space: nowrap; }
+.tma-btn:hover { background: #0f172a; border-color: #14b8a6; color: #5eead4; }
+.tma-btn:disabled { border-color: #374151; color: #4b5563; cursor: not-allowed; }
 
 /* 解錠・施錠エリアの大幅圧縮 (Main Target) */
 .time-stamp{ display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin-top: 6px; }
@@ -69,9 +74,9 @@ appearance: none; text-align: center; min-width: 50px; }
 /* ボタンのスタイル変更 (べた塗りを廃止しアウトラインへ統一) */
 .btn {
   appearance: none;
-  border: 1px solid var(--line); /* junkai_style.cssの--lineを適用 */
-  background: transparent; /* 背景透過 */
-  color: var(--muted); /* キャンセル用テキスト色 */
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
   padding: 9px 12px;
   border-radius: 12px;
   font-size: 16px;
@@ -84,8 +89,8 @@ appearance: none; text-align: center; min-width: 50px; }
 
 /* OK、作業完了用 (アウトラインオレンジ) */
 .btn.primary {
-  border-color: var(--brand); /* オレンジの境界線 */
-  color: var(--brand); /* オレンジのテキスト */
+  border-color: var(--brand);
+  color: var(--brand);
   background: transparent;
 }
 
@@ -110,8 +115,8 @@ background: #000; display: flex; align-items: center; justify-content: center; c
   display: flex; 
   flex-direction: column; 
   align-items: center;
-  transform: rotate(-8deg); /* 全体を右上がりに傾ける */
-  line-height: 1.5; /* 行間を十分に空ける */
+  transform: rotate(-8deg);
+  line-height: 1.5;
 }
 /* フォントサイズを大幅にアップ */
 #splash .msg-line1, #splash .msg-line2 { 
@@ -125,31 +130,30 @@ background: #000; display: flex; align-items: center; justify-content: center; c
 #splash .msg-line1 { 
   background: linear-gradient(transparent 55%, rgba(255, 140, 0, 0.8) 55%); 
   margin-right: 80px;
-/* 左側にズラす */
   z-index: 2; 
 }
 #splash .msg-line2 { 
   background: linear-gradient(transparent 55%, rgba(255, 64, 129, 0.8) 55%);
-  margin-left: 80px; /* 右側にズラす */
+  margin-left: 80px;
   z-index: 1; 
 }
 
-/* オリジナルモーダル設定 (指定通り) */
+/* オリジナルモーダル設定 */
 .modal {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.65);
   display: none;
-  align-items: flex-end; /* 指定通り */
+  align-items: flex-end;
   justify-content: center;
-  padding-bottom: 15vh; /* 指定通り */
+  padding-bottom: 15vh;
   z-index: 10000;
 }
 .modal.show { display: flex; }
 
 .dialog {
   width: min(480px, 90vw);
-  background: #020617; /* 巡回アプリのベースカラーを適用 */
+  background: #020617;
   color: #fff;
   border-radius: 12px;
   padding: 24px;
@@ -174,6 +178,29 @@ background: #000; display: flex; align-items: center; justify-content: center; c
   padding: 12px 0;
   font-size: 16px;
   font-weight: bold;
+}
+
+/* ▼ 追加: TMAモーダル用アクションボタン (巡回アプリの .tma-confirm-actions と同等) */
+.tma-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.tma-modal-actions .btn {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+.tma-modal-actions .btn-ok {
+  background: #020617;
+  border: 1px solid #0d9488;
+  color: #2dd4bf;
+}
+.tma-modal-actions .btn-ok:hover {
+  background: #0f172a;
+  border-color: #14b8a6;
+  color: #5eead4;
 }
 
 /* スマホ用調整 */
