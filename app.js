@@ -1,4 +1,4 @@
-// 作業管理アプリ app.js Version: V1J (index.html構造に完全準拠・タイマー/アラーム搭載)
+// 作業管理アプリ app.js Version: V1K (TMA手動再実行ボタン追加)
 (() => {
   const GITHUB_IMG_API = "https://api.github.com/repos/rkworks2025-coder/work/contents/img"; 
   const splash = document.getElementById('splash');
@@ -61,7 +61,6 @@
     if (!isError) setTimeout(() => toast.hidden = true, 3000);
   }
 
-  // index.htmlの .modal-msg を確実に書き換えるロジック
   function showConfirmModal(titleText, bodyText, okText = "OK", cancelText = "キャンセル") {
     return new Promise((resolve) => {
       const modal = document.getElementById('confirmModal');
@@ -69,7 +68,6 @@
       const okBtn = document.getElementById('modalOkBtn');
       const cancelBtn = document.getElementById('modalCancelBtn');
 
-      // 単一のメッセージエリアにタイトルと本文を結合して流し込む
       if (msgEl) {
         msgEl.innerHTML = `<strong>${titleText}</strong><br><span style="font-size:0.9em;">${bodyText}</span>`;
       }
@@ -128,6 +126,36 @@
         }
       } catch (e) { console.warn(`TMA Retry ${i+1} failed`); }
     }
+  }
+
+  // ▼ 追加: TMA手動再実行ボタンの初期化
+  function initWorkTmaBtn() {
+    const tmaBtn = document.getElementById('workTmaBtn');
+    const tmaModal = document.getElementById('workTmaModal');
+    const tmaModalTitle = document.getElementById('workTmaModalTitle');
+    const tmaModalModel = document.getElementById('workTmaModalModel');
+    const tmaModalOk = document.getElementById('workTmaModalOk');
+    const tmaModalCancel = document.getElementById('workTmaModalCancel');
+    if (!tmaBtn || !tmaModal || !tmaModalOk || !tmaModalCancel) return;
+
+    tmaBtn.addEventListener('click', () => {
+      // モーダルに車番・車種を表示
+      if (tmaModalTitle) tmaModalTitle.textContent = `【${currentVehicle.plate_full || '--'}】`;
+      if (tmaModalModel) tmaModalModel.textContent = currentVehicle.model || '';
+
+      tmaModal.classList.add('show');
+
+      tmaModalOk.onclick = () => {
+        tmaModal.classList.remove('show');
+        // 新しいrequestIdを発行してGASへ直接POST（遷移なし）
+        const requestId = "req-" + Date.now() + "-" + Math.random().toString(36).slice(-4);
+        triggerTmaWithRetry(currentVehicle.plate_full, requestId);
+      };
+
+      tmaModalCancel.onclick = () => {
+        tmaModal.classList.remove('show');
+      };
+    });
   }
 
   function startStopwatch() {
@@ -206,6 +234,7 @@
     currentVehicle.plate_full = p.get('plate_full') || p.get('plate') || '';
 
     initUI();
+    initWorkTmaBtn(); // ▼ 追加
     completeBtn.addEventListener('click', handleWorkComplete);
     startStopwatch();
 
