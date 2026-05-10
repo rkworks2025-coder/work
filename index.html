@@ -29,8 +29,10 @@
         <div class="info-item"><span class="label">車番:</span> <span id="disp_plate">--</span></div>
       </div>
       
+      <!-- ▼ 変更: flex化してTMAボタンを右端に追加 -->
       <div class="stopwatch-container">
         <div id="stopwatch">00:00</div>
+        <button id="workTmaBtn" class="tma-btn" type="button">TMA</button>
       </div>
 
       <div class="time-stamp">
@@ -92,6 +94,7 @@
     </div>
   </div>
 
+  <!-- 作業完了・TMA失敗再送確認用モーダル (既存) -->
   <div id="confirmModal" class="modal">
     <div class="dialog">
       <div class="modal-msg">作業を完了しますか？</div>
@@ -102,9 +105,21 @@
     </div>
   </div>
 
+  <!-- ▼ 追加: TMA手動再実行用モーダル -->
+  <div id="workTmaModal" class="modal">
+    <div class="dialog">
+      <h3 id="workTmaModalTitle" style="margin:0 0 6px 0; font-size:18px;"></h3>
+      <p id="workTmaModalModel" style="margin:0 0 10px 0; color:var(--fg); font-size:15px; font-weight:bold;"></p>
+      <p style="margin:0; color:var(--muted); font-size:14px;">TMA自動入力を再実行しますか？</p>
+      <div class="tma-modal-actions">
+        <button id="workTmaModalOk" class="btn btn-ok">OK</button>
+        <button id="workTmaModalCancel" class="btn">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" hidden></div> 
   <script>
-    // 連携用URL設定 (タイポ修正済)
     window.TMA_GAS_URL = "https://script.google.com/macros/s/AKfycbyXbPaarnD7mQa_rqm6mk-Os3XBH6C731aGxk7ecJC5U3XjtwfMkeF429rezkAo79jN/exec";
     window.SHEETS_URL = "https://script.google.com/macros/s/AKfycbyo2U1_TBxvzhJL50GHY8S0NeT1k0kueWb4tI1q2Oaw87NuGXqwjO7PWyCDdqFNZTdz/exec";
     window.SHEETS_KEY = "tl1";
