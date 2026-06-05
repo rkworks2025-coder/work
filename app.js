@@ -205,7 +205,12 @@
     }).catch(e => console.error(e));
 
     try { localStorage.setItem("junkai:completed_plate", currentVehicle.plate_full); } catch(e){}
-    setTimeout(() => { history.back(); }, 100);
+    const JUNKAI_URL = 'https://rkworks2025-coder.github.io/-/';
+    const returnParams = new URLSearchParams({
+      station: currentVehicle.station,
+      plate_full: currentVehicle.plate_full
+    });
+    setTimeout(() => { location.href = `${JUNKAI_URL}?${returnParams.toString()}`; }, 100);
   }
 
   function initUI() {
