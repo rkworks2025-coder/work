@@ -259,23 +259,62 @@
       splashImg.src = splashImgParam;
     } else {
       const cacheKey = "junkai:splash_images";
-      let cachedImages = [];
-      try {
-        const stored = localStorage.getItem(cacheKey);
-        if (stored) cachedImages = JSON.parse(stored);
-      } catch(e) {}
+      const usedKey  = "junkai:splash_used";
 
+      // ビンゴ方式（非復元抽選）: 表示済みは全消化まで抽選から除外し、
+      // 全消化後に使用済みをリセットして再び全画像から抽選する。
+      // 使用済みはlocalStorageで永続化（アプリ再起動をまたいで継続）。
+      function readJSON(key) {
+        try {
+          const stored = localStorage.getItem(key);
+          return stored ? JSON.parse(stored) : [];
+        } catch(e) { return []; }
+      }
+      function writeJSON(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+      }
+
+      // 画像リストから1枚をビンゴ方式で選んでsrcにセットする
+      function pickSplash(images) {
+        if (!images || images.length === 0) return false;
+
+        let used = readJSON(usedKey);
+        // 画像リストが更新された場合に備え、現リストに無い使用済みURLは除外
+        used = used.filter(u => images.includes(u));
+
+        // 未使用（リスト − 使用済み）を算出
+        let remaining = images.filter(img => !used.includes(img));
+
+        // 全消化していたらリセットして全画像から抽選
+        if (remaining.length === 0) {
+          used = [];
+          remaining = images.slice();
+        }
+
+        const chosen = remaining[Math.floor(Math.random() * remaining.length)];
+        splashImg.src = chosen;
+
+        used.push(chosen);
+        writeJSON(usedKey, used);
+        return true;
+      }
+
+      // まずキャッシュ済みリストで即時抽選（2回目以降もランダム表示）
+      const cachedImages = readJSON(cacheKey);
+      pickSplash(cachedImages);
+
+      // 裏でリストを更新。初回でキャッシュが無かった場合はここで抽選
       fetch(GITHUB_IMG_API)
         .then(res => res.json())
         .then(files => {
           const images = files.filter(f => f.name.match(/\.(jpg|jpeg|png|gif)$/i)).map(f => f.download_url);
           if (images.length > 0) {
-            try { localStorage.setItem(cacheKey, JSON.stringify(images)); } catch(e) {}
-            if (cachedImages.length === 0 && !splashImgParam) splashImg.src = images[Math.floor(Math.random() * images.length)];
+            writeJSON(cacheKey, images);
+            if (cachedImages.length === 0) pickSplash(images);
           }
         })
         .catch(() => {
-          if (cachedImages.length === 0 && !splashImgParam) splashImg.style.display = 'none';
+          if (cachedImages.length === 0) splashImg.style.display = 'none';
         });
     }
   }
